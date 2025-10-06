@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة الأصول - Cumulocity</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; padding: 20px; direction: rtl;
+        }
+        .container {
+            max-width: 1200px; margin: 0 auto; background: white;
+            border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white; padding: 30px; text-align: center;
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1em; }
+        .content { padding: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .section {
+            background: #f8f9fa; padding: 25px; border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        .section h2 {
+            color: #2c3e50; margin-bottom: 20px; padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        .form-group { margin-bottom: 20px; }
+        label {
+            display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;
+        }
+        select, input {
+            width: 100%; padding: 12px 15px; border: 2px solid #ddd;
+            border-radius: 8px; font-size: 16px; transition: all 0.3s ease;
+        }
+        select:focus, input:focus {
+            outline: none; border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        button {
+            background: linear-gradient(135deg, #3498db, #2980b9); color: white;
+            border: none; padding: 15px 30px; border-radius: 8px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            transition: all 0.3s ease; width: 100%;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        button:disabled {
+            background: #bdc3c7; cursor: not-allowed; transform: none; box-shadow: none;
+        }
+        .tree-view {
+            background: white; border: 1px solid #e9ecef;
+            border-radius: 8px; padding: 15px; max-height: 400px; overflow-y: auto;
+        }
+        .asset-item {
+            padding: 10px; margin: 5px 0; background: #f8f9fa;
+            border-radius: 5px; border-left: 4px solid #3498db;
+        }
+        .asset-item.parent {
+            background: #e3f2fd; border-left-color: #2ecc71; font-weight: 600;
+        }
+        .asset-item.child {
+            margin-right: 20px; background: #f1f8e9; border-left-color: #f39c12;
+        }
+        .loading { text-align: center; padding: 20px; color: #7f8c8d; }
+        .error {
+            background: #e74c3c; color: white; padding: 15px;
+            border-radius: 8px; margin-bottom: 20px;
+        }
+        .success {
+            background: #2ecc71; color: white; padding: 15px;
+            border-radius: 8px; margin-bottom: 20px;
+        }
+        .type-badge {
+            display: inline-block; background: #3498db; color: white;
+            padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 8px;
+        }
+        @media (max-width: 768px) {
+            .content { grid-template-columns: 1fr; }
+            .header h1 { font-size: 2em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌳 نظام إدارة الأصول</h1>
+            <p>إدارة العلاقات بين الـ Parent والـ Child Assets (يدعم Groups تحت Groups)</p>
+        </div>
+        
+        <div class="content">
+            <!-- قسم الإضافة -->
+            <div class="section">
+                <h2>➕ إضافة علاقة جديدة</h2>
+                <div id="message"></div>
+                <div class="form-group">
+                    <label for="parentSelect">🔽 اختر الـ Parent:</label>
+                    <select id="parentSelect">
+                        <option value="">-- جاري تحميل الـ Parents --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="childName">📝 اسم الـ Child الجديد:</label>
+                    <input type="text" id="childName" placeholder="أدخل اسم الـ Child الجديد">
+                </div>
+                <div class="form-group">
+                    <label for="childType">🏷️ نوع الـ Child:</label>
+                    <select id="childType">
+                        <option value="">-- جاري تحميل الأنواع --</option>
+                    </select>
+                </div>
+                <button onclick="createChildAsset()" id="createBtn">✅ إنشاء Child وإضافته إلى Parent</button>
+            </div>
+            
+            <!-- قسم العرض -->
+            <div class="section">
+                <h2>🌲 شجرة العلاقات الحالية</h2>
+                <div class="form-group">
+                    <button onclick="loadAllData()" id="refreshBtn">🔄 تحديث البيانات</button>
+                </div>
+                <div id="treeView" class="tree-view">
+                    <div class="loading">⏳ جاري تحميل البيانات...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // بيانات الاتصال
+        const config = {
+            baseUrl: 'https://dev-lighting.iot.etisalat-cloud.com',
+            username: 't19885/phoebe.gergis@etisalat.com',
+            password: 'root@123'
+        };
+
+        let allAssets = [];
+        let availableTypes = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAllData();
+        });
+
+        async function loadAllData() {
+            try {
+                document.getElementById('refreshBtn').disabled = true;
+                document.getElementById('refreshBtn').textContent = '⏳ جاري التحميل...';
+                await Promise.all([
+                    loadParents(),
+                    loadAssetTypes(),
+                    loadAllAssets()
+                ]);
+            } catch (error) {
+                showMessage(`❌ خطأ في تحميل البيانات: ${error.message}`);
+            } finally {
+                document.getElementById('refreshBtn').disabled = false;
+                document.getElementById('refreshBtn').textContent = '🔄 تحديث البيانات';
+            }
+        }
+
+        function showMessage(message, type = 'error') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="${type}">${message}</div>`;
+            setTimeout(() => { messageDiv.innerHTML = ''; }, 5000);
+        }
+
+        async function loadParents() {
+            try {
+                const response = await fetch(`${config.baseUrl}/inventory/managedObjects?pageSize=200&fragmentType=c8y_IsAsset`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
+                        'Accept': 'application/vnd.com.nsn.cumulocity.managedobjectcollection+json'
+                    }
+                });
+                const data = await response.json();
+                const parentSelect = document.getElementById('parentSelect');
+                parentSelect.innerHTML = '<option value="">-- اختر الـ Parent --</option>';
+                data.managedObjects.forEach(asset => {
+                    const option = document.createElement('option');
+                    option.value = asset.id;
+                    option.textContent = `${asset.name || 'بدون اسم'} (${asset.id})`;
+                    parentSelect.appendChild(option);
+                });
+            } catch (error) {
+                showMessage(`❌ خطأ في تحميل الـ Parents: ${error.message}`);
+            }
+        }
+
+        async function loadAssetTypes() {
+            try {
+                const response = await fetch(`${config.baseUrl}/inventory/managedObjects?pageSize=500`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
+                        'Accept': 'application/vnd.com.nsn.cumulocity.managedobjectcollection+json'
+                    }
+                });
+
+                const data = await response.json();
+                const types = new Set();
+                data.managedObjects.forEach(asset => {
+                    if (asset.type && asset.type.trim() !== '') types.add(asset.type);
+                });
+                availableTypes = Array.from(types).sort();
+
+                const typeSelect = document.getElementById('childType');
+                typeSelect.innerHTML = '<option value="">-- اختر النوع --</option>';
+
+                // ترتيب الأنواع: التنظيمية ثم الأجهزة
+                const groupTypes = ['c8y_Group', 'c8y_Asset'];
+                const deviceTypes = availableTypes.filter(t => !groupTypes.includes(t));
+
+                const optGroup1 = document.createElement('optgroup');
+                optGroup1.label = '🧩 الأنواع التنظيمية';
+                groupTypes.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = getTypeDisplayName(type);
+                    optGroup1.appendChild(option);
+                });
+
+                const optGroup2 = document.createElement('optgroup');
+                optGroup2.label = '💡 أنواع الأجهزة';
+                deviceTypes.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = getTypeDisplayName(type);
+                    optGroup2.appendChild(option);
+                });
+
+                typeSelect.appendChild(optGroup1);
+                typeSelect.appendChild(optGroup2);
+
+            } catch (error) {
+                showMessage(`❌ خطأ في تحميل الأنواع: ${error.message}`);
+            }
+        }
+
+        function getTypeDisplayName(type) {
+            const typeMap = {
+                'c8y_Light': '💡 ضوء',
+                'c8y_Sensor': '📡 مستشعر', 
+                'c8y_Device': '📱 جهاز',
+                'c8y_Asset': '🏢 أصل',
+                'c8y_Thing': '🎯 شيء',
+                'c8y_Equipment': '⚙️ معدات',
+                'c8y_Group': '👥 مجموعة'
+            };
+            return typeMap[type] || `🏷️ ${type}`;
+        }
+
+        async function loadAllAssets() {
+            try {
+                document.getElementById('treeView').innerHTML = '<div class="loading">⏳ جاري تحميل البيانات...</div>';
+                const response = await fetch(`${config.baseUrl}/inventory/managedObjects?pageSize=1000`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
+                        'Accept': 'application/vnd.com.nsn.cumulocity.managedobjectcollection+json'
+                    }
+                });
+                const data = await response.json();
+                allAssets = data.managedObjects;
+                displayAssetTree();
+            } catch (error) {
+                document.getElementById('treeView').innerHTML = `<div class="error">❌ ${error.message}</div>`;
+            }
+        }
+
+        function displayAssetTree() {
+            const treeView = document.getElementById('treeView');
+            const parents = allAssets.filter(a => a.childAssets && a.childAssets.references?.length > 0);
+            const orphans = allAssets.filter(a => !a.childAssets || !a.childAssets.references?.length);
+
+            let html = '';
+
+            parents.forEach(parent => {
+                html += `<div class="asset-item parent">
+                    🏢 ${parent.name || 'بدون اسم'} 
+                    <span class="type-badge">${parent.type || 'لا يوجد نوع'}</span>
+                    (${parent.id})
+                </div>`;
+                
+                parent.childAssets.references.forEach(ref => {
+                    const child = allAssets.find(a => a.id === ref.managedObject.id);
+                    if (child) {
+                        html += `<div class="asset-item child">
+                            └── 📦 ${child.name || 'بدون اسم'} 
+                            <span class="type-badge">${child.type || 'لا يوجد نوع'}</span>
+                            (${child.id})
+                        </div>`;
+                    }
+                });
+            });
+
+            if (orphans.length > 0) {
+                html += `<div style="margin-top: 20px; color: #7f8c8d; font-weight: 600;">🔄 أصول بدون أطفال:</div>`;
+                orphans.forEach(asset => {
+                    if (!parents.find(p => p.id === asset.id)) {
+                        html += `<div class="asset-item">
+                            📦 ${asset.name || 'بدون اسم'} 
+                            <span class="type-badge">${asset.type || 'لا يوجد نوع'}</span>
+                            (${asset.id})
+                        </div>`;
+                    }
+                });
+            }
+
+            treeView.innerHTML = html || '<div class="loading">📭 لا توجد بيانات للعرض</div>';
+        }
+
+        async function createChildAsset() {
+            const parentSelect = document.getElementById('parentSelect');
+            const childName = document.getElementById('childName').value.trim();
+            const childType = document.getElementById('childType').value;
+            const createBtn = document.getElementById('createBtn');
+
+            if (!parentSelect.value) return showMessage('❌ يجب اختيار Parent');
+            if (!childName) return showMessage('❌ يجب إدخال اسم للـ Child');
+            if (!childType) return showMessage('❌ يجب اختيار نوع للـ Child');
+
+            try {
+                createBtn.disabled = true;
+                createBtn.textContent = '⏳ جاري الإنشاء...';
+
+                const newAsset = { name: childName, type: childType };
+
+                // ✅ تحديد الـ fragment المناسب حسب النوع
+                if (childType === 'c8y_Group') {
+                    newAsset.c8y_IsAsset = {};
+                    newAsset.c8y_IsDeviceGroup = {};
+                } else if (childType === 'c8y_Asset') {
+                    newAsset.c8y_IsAsset = {};
+                } else if (childType.startsWith('c8y_')) {
+                    const fragmentName = childType;
+                    newAsset[fragmentName] = {};
+                    newAsset.c8y_IsDevice = {};
+                } else {
+                    newAsset.c8y_IsAsset = {};
+                }
+
+                // إنشاء الأصل الجديد
+                const createResponse = await fetch(`${config.baseUrl}/inventory/managedObjects`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
+                        'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobject+json',
+                        'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json'
+                    },
+                    body: JSON.stringify(newAsset)
+                });
+
+                const createdAsset = await createResponse.json();
+
+                // ربطه بالـ Parent
+                const childReference = { managedObject: { id: createdAsset.id } };
+                await fetch(`${config.baseUrl}/inventory/managedObjects/${parentSelect.value}/childAssets`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
+                        'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobjectreference+json'
+                    },
+                    body: JSON.stringify(childReference)
+                });
+
+                showMessage(`✅ تم إنشاء "${childName}" (${childType}) بنجاح!`, 'success');
+                document.getElementById('childName').value = '';
+                await loadAllData();
+
+            } catch (error) {
+                showMessage(`❌ خطأ في الإنشاء: ${error.message}`);
+            } finally {
+                createBtn.disabled = false;
+                createBtn.textContent = '✅ إنشاء Child وإضافته إلى Parent';
+            }
+        }
+
+        window.getTypeDisplayName = getTypeDisplayName;
+    </script>
+</body>
+</html>
