@@ -50,6 +50,12 @@
   .success {
     color: green;
     margin-bottom: 10px;
+    line-height: 1.6;
+  }
+  .success a {
+    color: #1976d2;
+    text-decoration: underline;
+    margin: 0 5px;
   }
   .error {
     color: red;
@@ -177,6 +183,9 @@
           }
         });
         const parent = await response.json();
+        console.log('Parent asset details:', parent);
+        console.log('Parent has c8y_IsDevice?', !!parent.c8y_IsDevice);
+        console.log('Parent has c8y_IsAsset?', !!parent.c8y_IsAsset);
 
         // نجيب نوع الأصل الأب
         const parentType = parent.type;
@@ -221,11 +230,61 @@
         createBtn.disabled = true;
         createBtn.textContent = 'جاري الإنشاء...';
 
+        // ✅ نجيب تعريف الـ Asset Type
+        const assetTypeDef = window.assetTypes.find(t => t.name === childType);
+        console.log('Asset Type Definition:', assetTypeDef);
+        console.log('Asset Type has c8y_IsDevice?', !!assetTypeDef?.c8y_IsDevice);
+        console.log('Asset Type c8y_IsAssetType:', assetTypeDef?.c8y_IsAssetType);
+
         const newAsset = {
           name: childName,
           type: childType,
-          c8y_IsAsset: {}
+          c8y_IsAsset: {},
+          c8y_IsDeviceGroup: {}
         };
+
+        // ✅ نضيف الـ icon من الـ Asset Type
+        if (assetTypeDef?.c8y_IsAssetType?.icon) {
+          newAsset.icon = assetTypeDef.c8y_IsAssetType.icon;
+        }
+
+        // ✅ لو الـ Asset Type عنده properties إضافية، نضيفها
+        if (assetTypeDef?.c8y_IsAssetType?.properties) {
+          assetTypeDef.c8y_IsAssetType.properties.forEach(prop => {
+            console.log('Processing property:', prop);
+
+            // نتحقق لو دي complex property (عندها properties جواها)
+            if (prop.properties && Array.isArray(prop.properties)) {
+              const propValue = { name: childName }; // نضيف الاسم زي ما شفنا في Cairo
+
+              prop.properties.forEach(nestedProp => {
+                // نضيف كل nested property سواء عندها default value أو لأ
+                if (nestedProp.defaultValue !== undefined && nestedProp.defaultValue !== null) {
+                  propValue[nestedProp.key] = nestedProp.defaultValue;
+                } else {
+                  // نضيف قيمة افتراضية حسب النوع
+                  if (nestedProp.type === 'Number' || nestedProp.type === 'number') {
+                    propValue[nestedProp.key] = 0;
+                  } else if (nestedProp.type === 'String' || nestedProp.type === 'string') {
+                    propValue[nestedProp.key] = '';
+                  } else if (nestedProp.type === 'Boolean' || nestedProp.type === 'boolean') {
+                    propValue[nestedProp.key] = false;
+                  } else {
+                    propValue[nestedProp.key] = 0; // default للـ Number
+                  }
+                }
+              });
+
+              // نضيف الـ property مباشرة في الـ root (مش جوا assetProperties)
+              newAsset[prop.key] = propValue;
+            } else if (prop.defaultValue !== undefined) {
+              // simple property
+              newAsset[prop.key] = prop.defaultValue;
+            }
+          });
+        }
+
+        console.log('Creating asset with payload:', JSON.stringify(newAsset, null, 2));
 
         const createResponse = await fetch(`${config.baseUrl}/inventory/managedObjects`, {
           method: 'POST',
@@ -242,6 +301,7 @@
         if (createResponse.status === 201 || createResponse.status === 200) {
           try {
             createdAsset = await createResponse.json();
+            console.log('Created asset response:', createdAsset);
           } catch {
             const location = createResponse.headers.get('Location');
             if (location) {
@@ -252,6 +312,19 @@
         }
 
         if (!createdAsset.id) throw new Error('لم يتم الحصول على معرف الأصل الجديد.');
+
+        // ✅ نتحقق من الأصل المنشأ
+        const verifyResponse = await fetch(`${config.baseUrl}/inventory/managedObjects/${createdAsset.id}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
+            'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json'
+          }
+        });
+        const verifiedAsset = await verifyResponse.json();
+        console.log('Verified asset after creation:', verifiedAsset);
+        console.log('Has c8y_IsDevice?', !!verifiedAsset.c8y_IsDevice);
+        console.log('Has c8y_IsAsset?', !!verifiedAsset.c8y_IsAsset);
 
         // ✅ ننتظر لحظة ثم نربطه بالأب
         await new Promise(r => setTimeout(r, 1000));
@@ -269,7 +342,19 @@
 
         if (!linkResponse.ok) throw new Error('فشل الربط بالأصل الأب.');
 
-        showMessage(`✅ تم إنشاء وربط الأصل "${childName}" (${childType}) بنجاح`, 'success');
+        const assetUrl = `${config.baseUrl}/inventory/managedObjects/${createdAsset.id}`;
+        const dtmDeviceUrl = `${config.baseUrl}/apps/digital-twin-manager/index.html#/device/${createdAsset.id}`;
+        const dtmAssetUrl = `${config.baseUrl}/apps/digital-twin-manager/index.html#/asset/${createdAsset.id}`;
+        const dtmGroupUrl = `${config.baseUrl}/apps/digital-twin-manager/index.html#/group/${createdAsset.id}`;
+        const parentSubassetsUrl = `${config.baseUrl}/apps/digital-twin-manager/index.html#/group/${parentSelect.value}/subassets`;
+
+        showMessage(`✅ تم إنشاء وربط الأصل "${childName}" (${childType}) بنجاح (ID: ${createdAsset.id})<br><br>` +
+          `<strong>جرب الروابط دي:</strong><br>` +
+          `<a href="${dtmDeviceUrl}" target="_blank">DTM Device View</a> | ` +
+          `<a href="${dtmAssetUrl}" target="_blank">DTM Asset View</a> | ` +
+          `<a href="${dtmGroupUrl}" target="_blank">DTM Group View</a><br>` +
+          `<a href="${parentSubassetsUrl}" target="_blank">Parent Subassets</a> | ` +
+          `<a href="${assetUrl}" target="_blank">API JSON</a>`, 'success');
         document.getElementById('childName').value = '';
         await loadParents();
 
