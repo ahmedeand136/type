@@ -16,45 +16,42 @@
     .container {
       background: #fff;
       padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
-      max-width: 520px;
+      border-radius: 8px;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
       margin: auto;
     }
 
     h2 {
       text-align: center;
       margin-bottom: 10px;
-      font-size: 16px;
-    }
-
-    .form-group {
-      margin-bottom: 8px;
+      font-size: 14px;
     }
 
     label {
       font-weight: bold;
-      margin-right: 5px;
-      font-size: 12px;
+      font-size: 11px;
+      white-space: nowrap;
     }
 
     select,
     input {
-      padding: 4px;
+      padding: 4px 6px;
       border: 1px solid #ccc;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: 11px;
     }
 
     button {
+      display: block;
       width: 100%;
       padding: 6px;
       background: #007bff;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 4px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 12px;
     }
 
     button:disabled {
@@ -64,16 +61,16 @@
 
     .success {
       color: green;
-      text-align: center;
-      font-size: 12px;
       margin-bottom: 5px;
+      text-align: center;
+      font-size: 11px;
     }
 
     .error {
       color: red;
-      text-align: center;
-      font-size: 12px;
       margin-bottom: 5px;
+      text-align: center;
+      font-size: 11px;
     }
 
     .inline-selects {
@@ -81,46 +78,47 @@
       align-items: center;
       gap: 5px;
       flex-wrap: wrap;
+      margin-bottom: 8px;
     }
 
     .inline-selects select {
       flex: 1;
-      min-width: 110px;
-      max-width: 160px;
+      min-width: 100px;
+      max-width: 180px;
     }
 
     #childName {
       width: 100%;
-      margin-top: 3px;
+      margin-top: 4px;
     }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <h2>Asset Manager</h2>
+    <h2>Asset Management</h2>
     <div id="message"></div>
 
     <div class="form-group inline-selects">
       <label for="parentSelect">Parent:</label>
       <select id="parentSelect">
-        <option value="">-- Loading... --</option>
+        <option value="">-- Loading --</option>
       </select>
 
-      <label for="childOrDeviceSelect">Child/Device:</label>
+      <label for="childOrDeviceSelect">Child / Device:</label>
       <select id="childOrDeviceSelect">
-        <option value="">-- Select --</option>
+        <option value="">-- Select type or device --</option>
         <optgroup label="Asset Types" id="typesGroup"></optgroup>
         <optgroup label="Devices" id="devicesGroup"></optgroup>
       </select>
     </div>
 
     <div id="nameBlock" class="form-group">
-      <label for="childName">Name:</label>
-      <input id="childName" placeholder="Enter name..." />
+      <label for="childName">Child Name:</label>
+      <input id="childName" placeholder="Enter child or device name" />
     </div>
 
-    <button id="actionBtn" disabled>Run</button>
+    <button id="actionBtn" disabled>Execute</button>
   </div>
 
   <script>
@@ -147,7 +145,7 @@
 
     function showMsg(txt, cls = 'error') {
       message.innerHTML = `<div class="${cls}">${txt}</div>`;
-      setTimeout(() => { message.innerHTML = ''; }, 4000);
+      setTimeout(() => { message.innerHTML = ''; }, 5000);
     }
 
     async function get(url) { return (await fetch(url, { headers })).json(); }
@@ -172,14 +170,14 @@
         const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAsset&pageSize=200`);
         parentSelect.innerHTML = '<option value="">-- Select Parent --</option>';
         data.managedObjects.forEach(a => parentSelect.appendChild(new Option(`${a.name || 'No Name'} (${a.id})`, a.id)));
-      } catch (e) { showMsg('Failed to load parents', 'error'); }
+      } catch (e) { showMsg('Failed to load parents'); }
     }
 
     async function loadTypes() {
       try {
         const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAssetType&pageSize=2000&withChildren=true`);
         types = await Promise.all(data.managedObjects.map(t => getObj(`${cfg.base}/inventory/managedObjects/${t.id}`)));
-      } catch (e) { showMsg('Failed to load types', 'error'); }
+      } catch (e) { showMsg('Failed to load types'); }
     }
 
     async function loadDevices() {
@@ -193,12 +191,15 @@
           opt.textContent = `${d.name || 'No Name'} (${d.id})`;
           devicesGroup.appendChild(opt);
         });
-      } catch (e) { showMsg('Failed to load devices', 'error'); }
+      } catch (e) { showMsg('Failed to load devices'); }
     }
 
     parentSelect.addEventListener('change', async (ev) => {
       typesGroup.innerHTML = '<option>-- Loading --</option>';
-      if (!ev.target.value) return;
+      if (!ev.target.value) {
+        typesGroup.innerHTML = '<option>-- Select parent first --</option>';
+        return;
+      }
       try {
         const parent = await getObj(`${cfg.base}/inventory/managedObjects/${ev.target.value}`);
         const pType = types.find(t => t.name === parent.type);
@@ -213,11 +214,9 @@
               typesGroup.appendChild(opt);
             }
           });
-        } else {
-          typesGroup.innerHTML = '<option>-- None --</option>';
-        }
-      } catch {
-        typesGroup.innerHTML = '<option>-- Error --</option>';
+        } else typesGroup.innerHTML = '<option>-- No types --</option>';
+      } catch (err) {
+        typesGroup.innerHTML = '<option>-- Error loading types --</option>';
       }
       updateActionState();
     });
@@ -240,7 +239,7 @@
       } else {
         nameBlock.style.display = 'block';
         childName.disabled = false;
-        actionBtn.textContent = 'Run';
+        actionBtn.textContent = 'Execute';
       }
     }
 
@@ -252,69 +251,59 @@
     }
 
     childName.addEventListener('input', updateActionState);
+    parentSelect.addEventListener('change', updateActionState);
 
     actionBtn.addEventListener('click', async () => {
       const sel = childOrDeviceSelect.value || '';
-      if (!sel) return showMsg('Select a type or device', 'error');
-      if (!parentSelect.value) return showMsg('Select parent first', 'error');
+      if (!sel) return showMsg('Select type or device');
+      if (!parentSelect.value) return showMsg('Select parent first');
       if (sel.startsWith('type::')) await handleCreateAssetFromType();
       else if (sel.startsWith('dev::')) await handleAssignDevice();
-      else showMsg('Unknown selection', 'error');
     });
 
     async function handleCreateAssetFromType() {
       const parentId = parentSelect.value;
       const typeName = childOrDeviceSelect.value.split('::')[1];
       const name = childName.value.trim();
-      if (!typeName || !name) return;
-
-      actionBtn.disabled = true; const prevTxt = actionBtn.textContent; actionBtn.textContent = 'Creating...';
+      if (!name) return showMsg('Enter name');
+      actionBtn.disabled = true;
+      const prevTxt = actionBtn.textContent;
+      actionBtn.textContent = 'Creating...';
       try {
         const typeDef = types.find(t => t.name === typeName);
         const asset = { name, type: typeName, c8y_IsAsset: {}, c8y_IsDeviceGroup: {} };
-        if (typeDef?.c8y_IsAssetType?.icon) asset.icon = typeDef.c8y_IsAssetType.icon;
-
         const res = await post(`${cfg.base}/inventory/managedObjects`, asset);
-        if (!res.ok) throw new Error('Failed to create');
-        let id; try { const json = await res.json(); id = json.id; } catch { const loc = res.headers.get('Location'); if (loc) id = loc.split('/').pop(); }
-
+        const json = await res.json();
+        const id = json.id;
         await postRef(`${cfg.base}/inventory/managedObjects/${parentId}/childAssets`, id);
-        showMsg(`✅ Created & linked "${name}" (${id})`, 'success');
-        await loadParents();
-        childName.value = ''; childOrDeviceSelect.selectedIndex = 0;
-        updateUIForSelection(); updateActionState();
-      } catch (err) {
-        showMsg('Error: ' + err.message, 'error');
-      } finally {
-        actionBtn.disabled = false; actionBtn.textContent = prevTxt;
-      }
+        showMsg(`✅ Created & linked "${name}" (ID: ${id})`, 'success');
+        childName.value = '';
+        childOrDeviceSelect.selectedIndex = 0;
+      } catch (err) { showMsg('Error: ' + err.message); }
+      finally { actionBtn.disabled = false; actionBtn.textContent = prevTxt; }
     }
 
     async function handleAssignDevice() {
       const parentId = parentSelect.value;
       const deviceId = childOrDeviceSelect.value.split('::')[1];
-      if (!deviceId) return showMsg('No device selected', 'error');
-      actionBtn.disabled = true; const prevTxt = actionBtn.textContent; actionBtn.textContent = 'Linking...';
+      if (!deviceId) return showMsg('No device selected');
+      actionBtn.disabled = true;
+      const prevTxt = actionBtn.textContent;
+      actionBtn.textContent = 'Linking...';
       try {
         const device = await getObj(`${cfg.base}/inventory/managedObjects/${deviceId}`);
         if (!device.c8y_IsAsset) {
-          const addFlag = await fetch(`${cfg.base}/inventory/managedObjects/${deviceId}`, {
+          await fetch(`${cfg.base}/inventory/managedObjects/${deviceId}`, {
             method: 'PUT',
             headers: { ...headersObj, 'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobject+json' },
             body: JSON.stringify({ c8y_IsAsset: {} })
           });
-          if (!addFlag.ok) throw new Error('Failed to mark device as asset');
         }
         await postRef(`${cfg.base}/inventory/managedObjects/${parentId}/childAssets`, deviceId);
         showMsg('✅ Device linked', 'success');
         childOrDeviceSelect.selectedIndex = 0;
-        updateUIForSelection();
-        updateActionState();
-      } catch (err) {
-        showMsg('Error: ' + err.message, 'error');
-      } finally {
-        actionBtn.disabled = false; actionBtn.textContent = prevTxt;
-      }
+      } catch (err) { showMsg('Error: ' + err.message); }
+      finally { actionBtn.disabled = false; actionBtn.textContent = prevTxt; }
     }
 
     (async () => {
