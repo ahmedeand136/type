@@ -119,7 +119,7 @@
     function showMessage(message, type = 'error') {
       const messageDiv = document.getElementById('message');
       messageDiv.innerHTML = `<div class="${type}">${message}</div>`;
-      setTimeout(() => { messageDiv.innerHTML = ''; }, 5000);
+      setTimeout(() => { messageDiv.innerHTML = ''; }, 50000);
     }
 
     async function loadParents() {
@@ -147,7 +147,7 @@
 
     async function loadAssetTypes() {
       try {
-        const response = await fetch(`${config.baseUrl}/inventory/managedObjects?fragmentType=c8y_IsAssetType&pageSize=2000`, {
+        const response = await fetch(`${config.baseUrl}/inventory/managedObjects?fragmentType=c8y_IsAssetType&pageSize=2000&withChildren=true`, {
           method: 'GET',
           headers: {
             'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
@@ -155,7 +155,22 @@
           }
         });
         const data = await response.json();
-        window.assetTypes = data.managedObjects; // نخزنهم للاستخدام لاحقًا
+
+        // نحمّل تفاصيل كل Asset Type مع الـ properties الكاملة
+        const detailedTypes = await Promise.all(
+          data.managedObjects.map(async (type) => {
+            const detailResponse = await fetch(`${config.baseUrl}/inventory/managedObjects/${type.id}`, {
+              method: 'GET',
+              headers: {
+                'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
+                'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json'
+              }
+            });
+            return await detailResponse.json();
+          })
+        );
+
+        window.assetTypes = detailedTypes;
       } catch (error) {
         showMessage(`خطأ في تحميل الأنواع: ${error.message}`);
       }
@@ -249,39 +264,61 @@
         }
 
         // ✅ لو الـ Asset Type عنده properties إضافية، نضيفها
-        if (assetTypeDef?.c8y_IsAssetType?.properties) {
-          assetTypeDef.c8y_IsAssetType.properties.forEach(prop => {
-            console.log('Processing property:', prop);
+        if (assetTypeDef?.c8y_IsAssetType?.properties && Array.isArray(assetTypeDef.c8y_IsAssetType.properties)) {
+          // نجيب تفاصيل الـ properties من الـ childAdditions
+          for (const propRef of assetTypeDef.c8y_IsAssetType.properties) {
+            console.log('Processing property reference:', propRef);
 
-            // نتحقق لو دي complex property (عندها properties جواها)
-            if (prop.properties && Array.isArray(prop.properties)) {
-              const propValue = { name: childName }; // نضيف الاسم زي ما شفنا في Cairo
-
-              prop.properties.forEach(nestedProp => {
-                // نضيف كل nested property سواء عندها default value أو لأ
-                if (nestedProp.defaultValue !== undefined && nestedProp.defaultValue !== null) {
-                  propValue[nestedProp.key] = nestedProp.defaultValue;
-                } else {
-                  // نضيف قيمة افتراضية حسب النوع
-                  if (nestedProp.type === 'Number' || nestedProp.type === 'number') {
-                    propValue[nestedProp.key] = 0;
-                  } else if (nestedProp.type === 'String' || nestedProp.type === 'string') {
-                    propValue[nestedProp.key] = '';
-                  } else if (nestedProp.type === 'Boolean' || nestedProp.type === 'boolean') {
-                    propValue[nestedProp.key] = false;
-                  } else {
-                    propValue[nestedProp.key] = 0; // default للـ Number
+            if (propRef.id) {
+              try {
+                // نجيب تفاصيل الـ property من الـ API
+                const propResponse = await fetch(`${config.baseUrl}/inventory/managedObjects/${propRef.id}`, {
+                  method: 'GET',
+                  headers: {
+                    'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
+                    'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json'
                   }
-                }
-              });
+                });
+                const propDetail = await propResponse.json();
+                console.log('Property details:', propDetail);
 
-              // نضيف الـ property مباشرة في الـ root (مش جوا assetProperties)
-              newAsset[prop.key] = propValue;
-            } else if (prop.defaultValue !== undefined) {
-              // simple property
-              newAsset[prop.key] = prop.defaultValue;
+                // نتحقق لو دي complex property (عندها properties جواها)
+                if (propDetail.properties && Array.isArray(propDetail.properties)) {
+                  const propValue = { name: childName }; // نضيف الاسم زي ما شفنا في Cairo
+
+                  propDetail.properties.forEach(nestedProp => {
+                    console.log('  - Nested property:', nestedProp.key, nestedProp.type, nestedProp.defaultValue);
+
+                    // نضيف كل nested property سواء عندها default value أو لأ
+                    if (nestedProp.defaultValue !== undefined && nestedProp.defaultValue !== null) {
+                      propValue[nestedProp.key] = nestedProp.defaultValue;
+                    } else {
+                      // نضيف قيمة افتراضية حسب النوع
+                      if (nestedProp.type === 'Number' || nestedProp.type === 'number') {
+                        propValue[nestedProp.key] = 0;
+                      } else if (nestedProp.type === 'String' || nestedProp.type === 'string') {
+                        propValue[nestedProp.key] = '';
+                      } else if (nestedProp.type === 'Boolean' || nestedProp.type === 'boolean') {
+                        propValue[nestedProp.key] = false;
+                      } else {
+                        propValue[nestedProp.key] = 0; // default للـ Number
+                      }
+                    }
+                  });
+
+                  console.log('  - Final propValue:', propValue);
+
+                  // نضيف الـ property مباشرة في الـ root (مش جوا assetProperties)
+                  newAsset[propDetail.key] = propValue;
+                } else if (propDetail.defaultValue !== undefined) {
+                  // simple property
+                  newAsset[propDetail.key] = propDetail.defaultValue;
+                }
+              } catch (error) {
+                console.error('Error loading property details:', error);
+              }
             }
-          });
+          }
         }
 
         console.log('Creating asset with payload:', JSON.stringify(newAsset, null, 2));
