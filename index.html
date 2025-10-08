@@ -2,8 +2,8 @@
 <html lang="ar" dir="rtl">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>نظام إدارة الأصول</title>
   <style>
     body {
@@ -13,21 +13,21 @@
     }
 
     .container {
-      max-width: 400px;
-      margin: 40px auto;
+      max-width: 480px;
+      margin: 36px auto;
       background: #fff;
-      padding: 24px;
+      padding: 20px;
       border-radius: 8px;
       box-shadow: 0 2px 8px #0001;
     }
 
     .header h2 {
-      margin: 0 0 16px 0;
+      margin: 0 0 12px 0;
       text-align: center;
     }
 
     .form-group {
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     label {
@@ -54,6 +54,7 @@
 
     button:disabled {
       background: #aaa;
+      cursor: not-allowed;
     }
 
     .success {
@@ -61,15 +62,42 @@
       margin-bottom: 10px;
     }
 
-    .success a {
-      color: #1976d2;
-      text-decoration: underline;
-      margin: 0 5px;
-    }
-
     .error {
       color: red;
       margin-bottom: 10px;
+    }
+
+    .mode-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .mode-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-right: 8px;
+      cursor: pointer;
+    }
+
+    .blocks {
+      border: 1px solid #eee;
+      padding: 12px;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .note {
+      font-size: 13px;
+      color: #666;
+      margin-top: 8px;
     }
   </style>
 </head>
@@ -80,39 +108,54 @@
       <h2>إدارة الأصول</h2>
     </div>
     <div id="message"></div>
+
     <div class="form-group">
       <label for="parentSelect">اختر الأصل الأب:</label>
       <select id="parentSelect">
         <option value="">-- جاري التحميل --</option>
       </select>
     </div>
-    <div class="form-group">
-      <label for="childType">نوع الأصل الفرعي:</label>
-      <select id="childType">
-        <option value="">-- اختر الأب أولاً --</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="childName">اسم الأصل الفرعي:</label>
-      <input type="text" id="childName" placeholder="أدخل الاسم">
-    </div>
-    <button onclick="createAsset()" id="createBtn">إنشاء وربط</button>
 
-    <hr style="margin: 30px 0; border: 1px solid #e0e0e0;">
+    <!-- وضع الاختيار الموحد -->
+    <div class="form-group">
+      <div class="mode-row">
+        <label><input type="radio" name="mode" id="modeType" value="type" checked> نوع الأصل الفرعي</label>
+        <label><input type="radio" name="mode" id="modeDevice" value="device"> اختر الجهاز</label>
+      </div>
 
-    <div class="form-group">
-      <label for="assetSelect">اختر الـ Asset:</label>
-      <select id="assetSelect">
-        <option value="">-- جاري التحميل --</option>
-      </select>
+      <div class="blocks">
+        <!-- بلوك النوع + اسم الأصل الفرعي -->
+        <div id="typeBlock">
+          <div class="form-group">
+            <label for="childType">نوع الأصل الفرعي:</label>
+            <select id="childType">
+              <option value="">-- اختر الأب أولاً --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="childName">اسم الأصل الفرعي:</label>
+            <input type="text" id="childName" placeholder="أدخل اسم الأصل الفرعي أو اسم الجهاز">
+          </div>
+        </div>
+
+        <!-- بلوك اختيار الجهاز (مخفي افتراضياً) -->
+        <div id="deviceBlock" class="hidden">
+          <div class="form-group">
+            <label for="deviceSelect">اختر الجهاز:</label>
+            <select id="deviceSelect">
+              <option value="">-- جاري التحميل --</option>
+            </select>
+          </div>
+        </div>
+      </div>
+     
     </div>
-    <div class="form-group">
-      <label for="deviceSelect">اختر الجهاز:</label>
-      <select id="deviceSelect">
-        <option value="">-- جاري التحميل --</option>
-      </select>
-    </div>
-    <button onclick="assignDevice()" id="assignBtn">ربط الجهاز بالـ Asset</button>
+
+    <div style="height:10px;"></div>
+
+    <button id="createBtn" onclick="createAsset()">إنشاء وربط (نوع)</button>
+    <div style="height:8px;"></div>
+    <button id="assignBtn" onclick="assignDevice()" class="hidden">ربط الجهاز بالـ Asset</button>
   </div>
 
   <script>
@@ -126,16 +169,28 @@
     const headers = { 'Authorization': auth, 'Accept': 'application/vnd.com.nsn.cumulocity.managedobjectcollection+json' };
     const headersObj = { 'Authorization': auth, 'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json' };
 
+    // DOM shortcuts
+    const parentSelect = document.getElementById('parentSelect');
+    const childType = document.getElementById('childType');
+    const childName = document.getElementById('childName');
+    const deviceSelect = document.getElementById('deviceSelect');
+    const createBtn = document.getElementById('createBtn');
+    const assignBtn = document.getElementById('assignBtn');
+    const modeType = document.getElementById('modeType');
+    const modeDevice = document.getElementById('modeDevice');
+    const typeBlock = document.getElementById('typeBlock');
+    const deviceBlock = document.getElementById('deviceBlock');
+    const msgContainer = document.getElementById('message');
+
     let types = [];
 
-    async function get(url) {
-      return (await fetch(url, { headers })).json();
+    function showMsg(text, type = 'error') {
+      msgContainer.innerHTML = `<div class="${type}">${text}</div>`;
+      setTimeout(() => { if (msgContainer) msgContainer.innerHTML = ''; }, 7000);
     }
 
-    async function getObj(url) {
-      return (await fetch(url, { headers: headersObj })).json();
-    }
-
+    async function get(url) { return (await fetch(url, { headers })).json(); }
+    async function getObj(url) { return (await fetch(url, { headers: headersObj })).json(); }
     async function post(url, body) {
       return await fetch(url, {
         method: 'POST',
@@ -143,7 +198,6 @@
         body: JSON.stringify(body)
       });
     }
-
     async function postRef(url, id) {
       return await fetch(url, {
         method: 'POST',
@@ -152,195 +206,149 @@
       });
     }
 
-    function msg(text, type = 'error') {
-      document.getElementById('message').innerHTML = `<div class="${type}">${text}</div>`;
-      setTimeout(() => document.getElementById('message').innerHTML = '', 50000);
-    }
-
+    // تحميل القوائم
     async function loadParents() {
-      const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAsset&pageSize=200`);
-      const sel = document.getElementById('parentSelect');
-      sel.innerHTML = '<option value="">-- اختر الأب --</option>';
-      data.managedObjects.forEach(a => {
-        const opt = document.createElement('option');
-        opt.value = a.id;
-        opt.textContent = `${a.name || 'بدون اسم'} (${a.id})`;
-        sel.appendChild(opt);
-      });
-
-      const sel2 = document.getElementById('assetSelect');
-      sel2.innerHTML = '<option value="">-- اختر Asset --</option>';
-      data.managedObjects.forEach(a => {
-        const opt = document.createElement('option');
-        opt.value = a.id;
-        opt.textContent = `${a.name || 'بدون اسم'} (${a.id})`;
-        sel2.appendChild(opt);
-      });
+      try {
+        const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAsset&pageSize=200`);
+        parentSelect.innerHTML = '<option value="">-- اختر الأب --</option>';
+        data.managedObjects.forEach(a => {
+          parentSelect.appendChild(new Option(`${a.name || 'بدون اسم'} (${a.id})`, a.id));
+        });
+      } catch (e) { showMsg('فشل تحميل الأصول: ' + (e.message || e)); }
     }
 
     async function loadDevices() {
-      const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsDevice&pageSize=200`);
-      const sel = document.getElementById('deviceSelect');
-      sel.innerHTML = '<option value="">-- اختر جهاز --</option>';
-      data.managedObjects.forEach(d => {
-        const opt = document.createElement('option');
-        opt.value = d.id;
-        opt.textContent = `${d.name || 'بدون اسم'} (${d.id})`;
-        sel.appendChild(opt);
-      });
+      try {
+        const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsDevice&pageSize=500`);
+        deviceSelect.innerHTML = '<option value="">-- اختر جهاز --</option>';
+        data.managedObjects.forEach(d => deviceSelect.appendChild(new Option(`${d.name || 'بدون اسم'} (${d.id})`, d.id)));
+      } catch (e) { showMsg('فشل تحميل الأجهزة: ' + (e.message || e)); }
     }
 
     async function loadTypes() {
-      const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAssetType&pageSize=2000&withChildren=true`);
-      types = await Promise.all(data.managedObjects.map(t => getObj(`${cfg.base}/inventory/managedObjects/${t.id}`)));
+      try {
+        const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAssetType&pageSize=2000&withChildren=true`);
+        types = await Promise.all(data.managedObjects.map(t => getObj(`${cfg.base}/inventory/managedObjects/${t.id}`)));
+      } catch (e) { showMsg('فشل تحميل أنواع الأصول: ' + (e.message || e)); }
     }
 
-    document.getElementById('parentSelect').addEventListener('change', async (e) => {
-      const sel = document.getElementById('childType');
-      sel.innerHTML = '<option value="">-- اختر النوع --</option>';
+    // عند تغيير الأصل الأب — نحدّث قائمة الأنواع المتاحة
+    parentSelect.addEventListener('change', async (e) => {
+      childType.innerHTML = '<option value="">-- اختر النوع --</option>';
       if (!e.target.value) return;
-
-      const parent = await getObj(`${cfg.base}/inventory/managedObjects/${e.target.value}`);
-      const pType = types.find(t => t.name === parent.type);
-
-      if (pType?.c8y_IsAssetType?.allowedAssetTypes?.length) {
-        pType.c8y_IsAssetType.allowedAssetTypes.forEach(a => {
-          const target = types.find(t => t.id === a.id);
-          if (target) {
-            const opt = document.createElement('option');
-            opt.value = target.name;
-            opt.textContent = target.label || target.name;
-            sel.appendChild(opt);
-          }
-        });
-      } else {
-        sel.innerHTML = '<option disabled>لا يوجد أنواع متاحة</option>';
+      try {
+        const parent = await getObj(`${cfg.base}/inventory/managedObjects/${e.target.value}`);
+        const pType = types.find(t => t.name === parent.type);
+        if (pType?.c8y_IsAssetType?.allowedAssetTypes?.length) {
+          pType.c8y_IsAssetType.allowedAssetTypes.forEach(a => {
+            const target = types.find(t => t.id === a.id);
+            if (target) childType.appendChild(new Option(target.label || target.name, target.name));
+          });
+        } else {
+          childType.innerHTML = '<option disabled>لا يوجد أنواع متاحة</option>';
+        }
+      } catch (err) {
+        childType.innerHTML = '<option disabled>خطأ في تحميل الأنواع</option>';
       }
     });
 
+    // تبديل الوضع (نوع / جهاز)
+    function updateModeUI() {
+      if (modeType.checked) {
+        typeBlock.classList.remove('hidden');
+        deviceBlock.classList.add('hidden');
+        createBtn.classList.remove('hidden');
+        assignBtn.classList.add('hidden');
+      } else {
+        typeBlock.classList.add('hidden');
+        deviceBlock.classList.remove('hidden');
+        createBtn.classList.add('hidden');
+        assignBtn.classList.remove('hidden');
+      }
+    }
+    modeType.addEventListener('change', updateModeUI);
+    modeDevice.addEventListener('change', updateModeUI);
+
+    // إنشاء أصل فرعي من النوع المختار
     async function createAsset() {
-      const parentId = document.getElementById('parentSelect').value;
-      const name = document.getElementById('childName').value.trim();
-      const type = document.getElementById('childType').value;
-      const btn = document.getElementById('createBtn');
+      const parentId = parentSelect.value;
+      const type = childType.value;
+      const name = childName.value.trim();
+      if (!parentId) return showMsg('يجب اختيار أصل أب');
+      if (!type) return showMsg('يجب اختيار نوع الأصل الفرعي');
+      if (!name) return showMsg('يجب إدخال اسم الأصل الفرعي');
 
-      if (!parentId) return msg('يجب اختيار أصل أب');
-      if (!name) return msg('يجب إدخال اسم');
-      if (!type) return msg('يجب اختيار نوع');
-
+      createBtn.disabled = true; createBtn.textContent = 'جاري الإنشاء...';
       try {
-        btn.disabled = true;
-        btn.textContent = 'جاري الإنشاء...';
-
         const typeDef = types.find(t => t.name === type);
         const asset = { name, type, c8y_IsAsset: {}, c8y_IsDeviceGroup: {} };
-
         if (typeDef?.c8y_IsAssetType?.icon) asset.icon = typeDef.c8y_IsAssetType.icon;
 
-        if (typeDef?.c8y_IsAssetType?.properties) {
-          for (const p of typeDef.c8y_IsAssetType.properties) {
-            if (p.id) {
-              try {
-                const prop = await getObj(`${cfg.base}/inventory/managedObjects/${p.id}`);
-                if (prop.properties) {
-                  const val = { name };
-                  prop.properties.forEach(np => {
-                    val[np.key] = np.defaultValue ?? (np.type === 'Number' || np.type === 'number' ? 0 : np.type === 'Boolean' || np.type === 'boolean' ? false : '');
-                  });
-                  asset[prop.key] = val;
-                } else if (prop.defaultValue !== undefined) {
-                  asset[prop.key] = prop.defaultValue;
-                }
-              } catch (e) { }
-            }
-          }
-        }
-
+        // أنشئ الأصل
         const res = await post(`${cfg.base}/inventory/managedObjects`, asset);
         let id;
-        if (res.status === 201 || res.status === 200) {
-          try {
-            id = (await res.json()).id;
-          } catch {
+        if (res.ok) {
+          const json = await res.json().catch(() => null);
+          if (json?.id) id = json.id;
+          else {
             const loc = res.headers.get('Location');
             if (loc) id = loc.split('/').pop();
           }
         }
+        if (!id) throw new Error('لم يتم الحصول على معرف الأصل المراد إنشاؤه');
 
-        if (!id) throw new Error('لم يتم الحصول على المعرف');
-
-        await new Promise(r => setTimeout(r, 1000));
+        // اربطه بالأصل الأب كـ childAssets
         const link = await postRef(`${cfg.base}/inventory/managedObjects/${parentId}/childAssets`, id);
-        if (!link.ok) throw new Error('فشل الربط');
+        if (!link.ok) throw new Error('فشل الربط بالأصل الأب');
 
-        msg(`✅ تم إنشاء وربط "${name}" (ID: ${id})<br><a href="${cfg.base}/apps/digital-twin-manager/index.html#/group/${parentId}/subassets" target="_blank">شاهد في DTM</a>`, 'success');
-        document.getElementById('childName').value = '';
+        showMsg(`✅ تم إنشاء وربط "${name}" (ID: ${id})`, 'success');
+        childName.value = '';
         await loadParents();
       } catch (e) {
-        msg(`خطأ: ${e.message}`);
+        showMsg('خطأ: ' + (e.message || e));
       } finally {
-        btn.disabled = false;
-        btn.textContent = 'إنشاء وربط';
+        createBtn.disabled = false; createBtn.textContent = 'إنشاء وربط (نوع)';
       }
     }
 
+    // ربط جهاز بالأصل (يصبح childAsset ليظهر في DTM)
     async function assignDevice() {
-      const assetId = document.getElementById('assetSelect').value;
-      const deviceId = document.getElementById('deviceSelect').value;
-      const btn = document.getElementById('assignBtn');
+      const parentId = parentSelect.value;
+      const deviceId = deviceSelect.value;
+      if (!parentId) return showMsg('يجب اختيار أصل أب');
+      if (!deviceId) return showMsg('يجب اختيار جهاز');
 
-      if (!assetId) return msg('يجب اختيار Asset');
-      if (!deviceId) return msg('يجب اختيار جهاز');
-
+      assignBtn.disabled = true; assignBtn.textContent = 'جاري الربط...';
       try {
-        btn.disabled = true;
-        btn.textContent = 'جاري الربط...';
-
-        console.log('Assigning device:', deviceId, 'to asset:', assetId);
-
-        // Method 1 (Recommended): Update device with parent reference
+        // نجلب الجهاز
         const device = await getObj(`${cfg.base}/inventory/managedObjects/${deviceId}`);
-        console.log('Device before update:', device);
 
-        // لو الجهاز مش أصل، نضيف له fragment بسيط عشان DTM يعرضه
+        // إذا الجهاز ليس له fragment c8y_IsAsset نضيفه (حتى يظهر في DTM كـ asset)
         if (!device.c8y_IsAsset) {
-          console.log('Adding c8y_IsAsset fragment to device...');
           const addAssetFlag = await fetch(`${cfg.base}/inventory/managedObjects/${deviceId}`, {
             method: 'PUT',
             headers: { ...headersObj, 'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobject+json' },
             body: JSON.stringify({ c8y_IsAsset: {} })
           });
-
-          if (!addAssetFlag.ok) throw new Error('فشل في تحويل الجهاز إلى أصل');
+          if (!addAssetFlag.ok) throw new Error('فشل في إضافة c8y_IsAsset إلى الجهاز');
         }
 
-        // اربطه بالأصل كـ childAsset (وليس childDevice)
-        const link = await postRef(`${cfg.base}/inventory/managedObjects/${assetId}/childAssets`, deviceId);
-
+        // اربطه كـ childAsset
+        const link = await postRef(`${cfg.base}/inventory/managedObjects/${parentId}/childAssets`, deviceId);
         if (!link.ok) throw new Error('فشل الربط كـ Asset');
 
-        // تحقق من نجاح الربط
-        await new Promise(r => setTimeout(r, 2000));
-
-        const verify = await getObj(`${cfg.base}/inventory/managedObjects/${assetId}?withChildren=true`);
-        const found = verify.childAssets?.references?.some(r => r.managedObject?.id === deviceId);
-
-        if (!found) throw new Error('الربط تم لكن لم يُعثر على الجهاز ضمن الأصول الفرعية');
-
-        msg(`✅ تم ربط الجهاز "${device.name}" كـ أصل فرعي بنجاح<br>
-         <a href="${cfg.base}/apps/digital-twin-manager/index.html#/group/${assetId}/subassets" target="_blank">شاهد الأصل في DTM</a>`, 'success');
-
+        showMsg('✅ تم ربط الجهاز بنجاح', 'success');
       } catch (e) {
-        console.error('Error:', e);
-        msg(`خطأ: ${e.message}`);
+        showMsg('خطأ: ' + (e.message || e));
       } finally {
-        btn.disabled = false;
-        btn.textContent = 'ربط الجهاز بالـ Asset';
+        assignBtn.disabled = false; assignBtn.textContent = 'ربط الجهاز بالـ Asset';
       }
     }
 
+    // تهيئة الصفحة
     (async () => {
       await Promise.all([loadParents(), loadTypes(), loadDevices()]);
+      updateModeUI();
     })();
   </script>
 </body>
