@@ -1,112 +1,28 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>نظام إدارة الأصول</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f7f7f7;
-      margin: 0;
-    }
-
-    .container {
-      max-width: 480px;
-      margin: 36px auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px #0001;
-    }
-
-    .header h2 {
-      margin: 0 0 12px 0;
-      text-align: center;
-    }
-
-    .form-group {
-      margin-bottom: 14px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 6px;
-    }
-
-    input,
-    select {
-      width: 100%;
-      padding: 8px;
-      box-sizing: border-box;
-    }
-
-    button {
-      width: 100%;
-      padding: 10px;
-      background: #1976d2;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    button:disabled {
-      background: #aaa;
-      cursor: not-allowed;
-    }
-
-    .success {
-      color: green;
-      margin-bottom: 10px;
-    }
-
-    .error {
-      color: red;
-      margin-bottom: 10px;
-    }
-
-    .mode-row {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-
-    .mode-row label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      margin-right: 8px;
-      cursor: pointer;
-    }
-
-    .blocks {
-      border: 1px solid #eee;
-      padding: 12px;
-      border-radius: 6px;
-      background: #fafafa;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .note {
-      font-size: 13px;
-      color: #666;
-      margin-top: 8px;
-    }
+    body { font-family: Arial, sans-serif; background: #f7f7f7; margin: 0; }
+    .container { max-width: 520px; margin: 36px auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+    .header h2 { margin: 0 0 12px 0; text-align: center; }
+    .form-group { margin-bottom: 14px; }
+    label { display:block; margin-bottom:6px; }
+    input, select, button { width:100%; padding:8px; box-sizing:border-box; }
+    button { background:#1976d2; color:#fff; border:none; border-radius:4px; cursor:pointer; }
+    button:disabled { background:#aaa; cursor:not-allowed; }
+    .blocks { border:1px solid #eee; padding:12px; border-radius:6px; background:#fafafa; }
+    .note { font-size:13px; color:#666; margin-top:8px; }
+    .success { color:green; margin-bottom:10px; }
+    .error { color:red; margin-bottom:10px; }
+    optgroup { font-weight:600; }
   </style>
 </head>
-
 <body>
   <div class="container">
-    <div class="header">
-      <h2>إدارة الأصول</h2>
-    </div>
+    <div class="header"><h2>إدارة الأصول</h2></div>
     <div id="message"></div>
 
     <div class="form-group">
@@ -116,46 +32,25 @@
       </select>
     </div>
 
-    <!-- وضع الاختيار الموحد -->
-    <div class="form-group">
-      <div class="mode-row">
-        <label><input type="radio" name="mode" id="modeType" value="type" checked> نوع الأصل الفرعي</label>
-        <label><input type="radio" name="mode" id="modeDevice" value="device"> اختر الجهاز</label>
+    <div class="form-group blocks">
+      <label for="childOrDeviceSelect">نوع الأصل الفرعي / الجهاز:</label>
+      <select id="childOrDeviceSelect">
+        <option value="">-- اختر نوع أو جهاز --</option>
+        <optgroup label="نوع الأصل الفرعي" id="typesGroup"></optgroup>
+        <optgroup label="الجهاز" id="devicesGroup"></optgroup>
+      </select>
+
+      <div id="nameBlock" class="form-group" style="margin-top:10px;">
+        <label for="childName">اسم الأصل الفرعي:</label>
+        <input id="childName" placeholder="أدخل اسم الأصل الفرعي أو اسم الجهاز (إن اخترت نوع)"/>
       </div>
 
-      <div class="blocks">
-        <!-- بلوك النوع + اسم الأصل الفرعي -->
-        <div id="typeBlock">
-          <div class="form-group">
-            <label for="childType">نوع الأصل الفرعي:</label>
-            <select id="childType">
-              <option value="">-- اختر الأب أولاً --</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="childName">اسم الأصل الفرعي:</label>
-            <input type="text" id="childName" placeholder="أدخل اسم الأصل الفرعي أو اسم الجهاز">
-          </div>
-        </div>
-
-        <!-- بلوك اختيار الجهاز (مخفي افتراضياً) -->
-        <div id="deviceBlock" class="hidden">
-          <div class="form-group">
-            <label for="deviceSelect">اختر الجهاز:</label>
-            <select id="deviceSelect">
-              <option value="">-- جاري التحميل --</option>
-            </select>
-          </div>
-        </div>
-      </div>
-     
+      <div class="note">اختَر عنصرًا من القائمة: عناصر تحت "نوع الأصل الفرعي" لإنشاء أصل جديد، وعناصر تحت "الجهاز" لربط جهاز موجود.</div>
     </div>
 
-    <div style="height:10px;"></div>
+    <div style="height:10px"></div>
 
-    <button id="createBtn" onclick="createAsset()">إنشاء وربط (نوع)</button>
-    <div style="height:8px;"></div>
-    <button id="assignBtn" onclick="assignDevice()" class="hidden">ربط الجهاز بالـ Asset</button>
+    <button id="actionBtn" disabled>تنفيذ</button>
   </div>
 
   <script>
@@ -164,193 +59,278 @@
       user: 't19885/phoebe.gergis@etisalat.com',
       pass: 'root@123'
     };
-
     const auth = 'Basic ' + btoa(cfg.user + ':' + cfg.pass);
     const headers = { 'Authorization': auth, 'Accept': 'application/vnd.com.nsn.cumulocity.managedobjectcollection+json' };
     const headersObj = { 'Authorization': auth, 'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json' };
 
-    // DOM shortcuts
+    // DOM
     const parentSelect = document.getElementById('parentSelect');
-    const childType = document.getElementById('childType');
+    const childOrDeviceSelect = document.getElementById('childOrDeviceSelect');
+    const typesGroup = document.getElementById('typesGroup');
+    const devicesGroup = document.getElementById('devicesGroup');
     const childName = document.getElementById('childName');
-    const deviceSelect = document.getElementById('deviceSelect');
-    const createBtn = document.getElementById('createBtn');
-    const assignBtn = document.getElementById('assignBtn');
-    const modeType = document.getElementById('modeType');
-    const modeDevice = document.getElementById('modeDevice');
-    const typeBlock = document.getElementById('typeBlock');
-    const deviceBlock = document.getElementById('deviceBlock');
-    const msgContainer = document.getElementById('message');
+    const nameBlock = document.getElementById('nameBlock');
+    const message = document.getElementById('message');
+    const actionBtn = document.getElementById('actionBtn');
 
-    let types = [];
+    let types = []; // loaded asset types
+    let devicesCache = []; // loaded devices
 
-    function showMsg(text, type = 'error') {
-      msgContainer.innerHTML = `<div class="${type}">${text}</div>`;
-      setTimeout(() => { if (msgContainer) msgContainer.innerHTML = ''; }, 7000);
+    function showMsg(txt, cls='error') {
+      message.innerHTML = `<div class="${cls}">${txt}</div>`;
+      setTimeout(()=>{ if(message) message.innerHTML = ''; }, 7000);
     }
 
-    async function get(url) { return (await fetch(url, { headers })).json(); }
-    async function getObj(url) { return (await fetch(url, { headers: headersObj })).json(); }
+    async function get(url){ return (await fetch(url, { headers })).json(); }
+    async function getObj(url){ return (await fetch(url, { headers: headersObj })).json(); }
     async function post(url, body) {
-      return await fetch(url, {
+      return fetch(url, {
         method: 'POST',
         headers: { ...headersObj, 'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobject+json' },
         body: JSON.stringify(body)
       });
     }
     async function postRef(url, id) {
-      return await fetch(url, {
+      return fetch(url, {
         method: 'POST',
         headers: { 'Authorization': auth, 'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobjectreference+json' },
         body: JSON.stringify({ managedObject: { id } })
       });
     }
 
-    // تحميل القوائم
-    async function loadParents() {
-      try {
+    // تحميل الأصول الأب
+    async function loadParents(){
+      try{
         const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAsset&pageSize=200`);
         parentSelect.innerHTML = '<option value="">-- اختر الأب --</option>';
-        data.managedObjects.forEach(a => {
-          parentSelect.appendChild(new Option(`${a.name || 'بدون اسم'} (${a.id})`, a.id));
-        });
-      } catch (e) { showMsg('فشل تحميل الأصول: ' + (e.message || e)); }
+        data.managedObjects.forEach(a => parentSelect.appendChild(new Option(`${a.name || 'بدون اسم'} (${a.id})`, a.id)));
+      }catch(e){ showMsg('فشل تحميل الأصول: ' + (e.message||e), 'error'); }
     }
 
-    async function loadDevices() {
-      try {
-        const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsDevice&pageSize=500`);
-        deviceSelect.innerHTML = '<option value="">-- اختر جهاز --</option>';
-        data.managedObjects.forEach(d => deviceSelect.appendChild(new Option(`${d.name || 'بدون اسم'} (${d.id})`, d.id)));
-      } catch (e) { showMsg('فشل تحميل الأجهزة: ' + (e.message || e)); }
-    }
-
-    async function loadTypes() {
-      try {
+    // تحميل الأنواع (asset types)
+    async function loadTypes(){
+      try{
         const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAssetType&pageSize=2000&withChildren=true`);
         types = await Promise.all(data.managedObjects.map(t => getObj(`${cfg.base}/inventory/managedObjects/${t.id}`)));
-      } catch (e) { showMsg('فشل تحميل أنواع الأصول: ' + (e.message || e)); }
+      }catch(e){ showMsg('فشل تحميل أنواع الأصول: ' + (e.message||e), 'error'); }
     }
 
-    // عند تغيير الأصل الأب — نحدّث قائمة الأنواع المتاحة
-    parentSelect.addEventListener('change', async (e) => {
-      childType.innerHTML = '<option value="">-- اختر النوع --</option>';
-      if (!e.target.value) return;
-      try {
-        const parent = await getObj(`${cfg.base}/inventory/managedObjects/${e.target.value}`);
+    // تحميل الأجهزة
+    async function loadDevices(){
+      try{
+        const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsDevice&pageSize=500`);
+        devicesCache = data.managedObjects || [];
+        // املأ مجموعة الأجهزة (devicesGroup)
+        devicesGroup.innerHTML = '';
+        devicesCache.forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = `dev::${d.id}`;
+          opt.textContent = `${d.name || 'بدون اسم'} (${d.id})`;
+          devicesGroup.appendChild(opt);
+        });
+      }catch(e){ showMsg('فشل تحميل الأجهزة: ' + (e.message||e), 'error'); }
+    }
+
+    // عند تغيير الأصل الأب — نملأ قائمة الأنواع المسموح بها تحت الـ optgroup
+    parentSelect.addEventListener('change', async (ev) => {
+      typesGroup.innerHTML = '';
+      typesGroup.appendChild(new Option('-- جارٍ التحميل --', ''));
+      if (!ev.target.value) {
+        typesGroup.innerHTML = '';
+        typesGroup.appendChild(new Option('-- اختر أباً أولاً --', ''));
+        return;
+      }
+      try{
+        const parent = await getObj(`${cfg.base}/inventory/managedObjects/${ev.target.value}`);
         const pType = types.find(t => t.name === parent.type);
-        if (pType?.c8y_IsAssetType?.allowedAssetTypes?.length) {
+        typesGroup.innerHTML = '';
+        if (pType?.c8y_IsAssetType?.allowedAssetTypes?.length){
           pType.c8y_IsAssetType.allowedAssetTypes.forEach(a => {
             const target = types.find(t => t.id === a.id);
-            if (target) childType.appendChild(new Option(target.label || target.name, target.name));
+            if (target){
+              const opt = document.createElement('option');
+              opt.value = `type::${target.name}`;
+              opt.textContent = target.label || target.name;
+              typesGroup.appendChild(opt);
+            }
           });
+          if (!typesGroup.children.length) typesGroup.appendChild(new Option('-- لا يوجد أنواع متاحة --', ''));
         } else {
-          childType.innerHTML = '<option disabled>لا يوجد أنواع متاحة</option>';
+          typesGroup.appendChild(new Option('-- لا يوجد أنواع متاحة --', ''));
         }
-      } catch (err) {
-        childType.innerHTML = '<option disabled>خطأ في تحميل الأنواع</option>';
+      }catch(err){
+        typesGroup.innerHTML = '';
+        typesGroup.appendChild(new Option('-- خطأ في تحميل الأنواع --', ''));
+      }
+      // إعادة تفعيل الزر إن كان هناك اختيار
+      updateActionState();
+    });
+
+    // عند تغيير الاختيار في الـ drop-down الرئيسي
+    childOrDeviceSelect.addEventListener('change', ev => {
+      updateUIForSelection();
+      updateActionState();
+    });
+
+    function updateUIForSelection(){
+      const v = childOrDeviceSelect.value || '';
+      if (v.startsWith('type::')){
+        // اختيار نوع: أظهر اسم الأصل، اضبط النص
+        nameBlock.style.display = 'block';
+        childName.disabled = false;
+        actionBtn.textContent = 'إنشاء وربط';
+      } else if (v.startsWith('dev::')){
+        // اختيار جهاز: أخفِ اسم الأصل
+        nameBlock.style.display = 'none';
+        childName.disabled = true;
+        actionBtn.textContent = 'ربط الجهاز';
+      } else {
+        nameBlock.style.display = 'block';
+        childName.disabled = false;
+        actionBtn.textContent = 'تنفيذ';
+      }
+    }
+
+    function updateActionState(){
+      const v = childOrDeviceSelect.value || '';
+      // فعال فقط لو اب و اختيار موجود؛ لو نوع -> يحتاج اسم أيضاً
+      if (!parentSelect.value || !v) {
+        actionBtn.disabled = true; return;
+      }
+      if (v.startsWith('type::')){
+        actionBtn.disabled = !childName.value.trim();
+      } else {
+        actionBtn.disabled = false;
+      }
+    }
+
+    // تتبع كتابة الاسم لتفعيل الزر
+    childName.addEventListener('input', updateActionState);
+    parentSelect.addEventListener('change', updateActionState);
+
+    // زر العمل الواحد الذي يقوم بإنشاء أصل أو ربط جهاز حسب اختيار المستخدم
+    actionBtn.addEventListener('click', async () => {
+      const sel = childOrDeviceSelect.value || '';
+      if (!sel) return showMsg('اختر نوعًا أو جهازًا أولاً', 'error');
+      if (!parentSelect.value) return showMsg('اختر الأصل الأب أولاً', 'error');
+
+      if (sel.startsWith('type::')){
+        await handleCreateAssetFromType();
+      } else if (sel.startsWith('dev::')){
+        await handleAssignDevice();
+      } else {
+        showMsg('اختيار غير معروف', 'error');
       }
     });
 
-    // تبديل الوضع (نوع / جهاز)
-    function updateModeUI() {
-      if (modeType.checked) {
-        typeBlock.classList.remove('hidden');
-        deviceBlock.classList.add('hidden');
-        createBtn.classList.remove('hidden');
-        assignBtn.classList.add('hidden');
-      } else {
-        typeBlock.classList.add('hidden');
-        deviceBlock.classList.remove('hidden');
-        createBtn.classList.add('hidden');
-        assignBtn.classList.remove('hidden');
-      }
-    }
-    modeType.addEventListener('change', updateModeUI);
-    modeDevice.addEventListener('change', updateModeUI);
-
-    // إنشاء أصل فرعي من النوع المختار
-    async function createAsset() {
+    // إنشاء أصل جديد وربطه
+    async function handleCreateAssetFromType(){
       const parentId = parentSelect.value;
-      const type = childType.value;
+      const typeName = childOrDeviceSelect.value.split('::')[1];
       const name = childName.value.trim();
-      if (!parentId) return showMsg('يجب اختيار أصل أب');
-      if (!type) return showMsg('يجب اختيار نوع الأصل الفرعي');
-      if (!name) return showMsg('يجب إدخال اسم الأصل الفرعي');
+      if (!typeName) return showMsg('نوع غير محدد', 'error');
+      if (!name) return showMsg('أدخل اسم الأصل الفرعي', 'error');
 
-      createBtn.disabled = true; createBtn.textContent = 'جاري الإنشاء...';
-      try {
-        const typeDef = types.find(t => t.name === type);
-        const asset = { name, type, c8y_IsAsset: {}, c8y_IsDeviceGroup: {} };
+      actionBtn.disabled = true; const prevTxt = actionBtn.textContent; actionBtn.textContent = 'جاري الإنشاء...';
+      try{
+        // الحصول على تعريف النوع (إن وجد)
+        const typeDef = types.find(t => t.name === typeName);
+
+        const asset = { name, type: typeName, c8y_IsAsset: {}, c8y_IsDeviceGroup: {} };
         if (typeDef?.c8y_IsAssetType?.icon) asset.icon = typeDef.c8y_IsAssetType.icon;
 
-        // أنشئ الأصل
-        const res = await post(`${cfg.base}/inventory/managedObjects`, asset);
-        let id;
-        if (res.ok) {
-          const json = await res.json().catch(() => null);
-          if (json?.id) id = json.id;
-          else {
-            const loc = res.headers.get('Location');
-            if (loc) id = loc.split('/').pop();
+        // إن كان لتايب خصائص معرفة، نعمل محاولة لنسخ القيم الافتراضية (محاولة بسيطة)
+        if (typeDef?.c8y_IsAssetType?.properties){
+          for (const p of typeDef.c8y_IsAssetType.properties){
+            if (p.id){
+              try{
+                const prop = await getObj(`${cfg.base}/inventory/managedObjects/${p.id}`);
+                if (prop.properties){
+                  const val = { name };
+                  prop.properties.forEach(np => {
+                    val[np.key] = np.defaultValue ?? (np.type && np.type.toLowerCase().includes('number') ? 0 : (np.type && np.type.toLowerCase().includes('boolean') ? false : ''));
+                  });
+                  asset[prop.key] = val;
+                } else if (prop.defaultValue !== undefined){
+                  asset[prop.key] = prop.defaultValue;
+                }
+              }catch(e){}
+            }
           }
         }
-        if (!id) throw new Error('لم يتم الحصول على معرف الأصل المراد إنشاؤه');
 
-        // اربطه بالأصل الأب كـ childAssets
+        const res = await post(`${cfg.base}/inventory/managedObjects`, asset);
+        if (!res.ok) throw new Error('فشل إنشاء الأصل (status ' + res.status + ')');
+
+        let id;
+        try{ const json = await res.json(); id = json.id; }catch(e){ const loc = res.headers.get('Location'); if (loc) id = loc.split('/').pop(); }
+
+        if (!id) throw new Error('لم يتم الحصول على معرف الأصل المنشأ');
+
+        // ربطه كـ childAssets
         const link = await postRef(`${cfg.base}/inventory/managedObjects/${parentId}/childAssets`, id);
-        if (!link.ok) throw new Error('فشل الربط بالأصل الأب');
+        if (!link.ok) throw new Error('فشل ربط الأصل بالوالد (status ' + link.status + ')');
 
         showMsg(`✅ تم إنشاء وربط "${name}" (ID: ${id})`, 'success');
-        childName.value = '';
+
+        // إعادة تحميل الأبوين والأنواع
         await loadParents();
-      } catch (e) {
-        showMsg('خطأ: ' + (e.message || e));
-      } finally {
-        createBtn.disabled = false; createBtn.textContent = 'إنشاء وربط (نوع)';
+        // أفرغ الحقول
+        childName.value = '';
+        childOrDeviceSelect.selectedIndex = 0;
+        updateUIForSelection();
+        updateActionState();
+      }catch(err){
+        showMsg('خطأ: ' + (err.message || err), 'error');
+      }finally{
+        actionBtn.disabled = false; actionBtn.textContent = prevTxt || 'تنفيذ';
       }
     }
 
-    // ربط جهاز بالأصل (يصبح childAsset ليظهر في DTM)
-    async function assignDevice() {
+    // ربط جهاز بالأصل (نجعله childAsset حتى يظهر في DTM)
+    async function handleAssignDevice(){
       const parentId = parentSelect.value;
-      const deviceId = deviceSelect.value;
-      if (!parentId) return showMsg('يجب اختيار أصل أب');
-      if (!deviceId) return showMsg('يجب اختيار جهاز');
+      const deviceId = childOrDeviceSelect.value.split('::')[1];
+      if (!deviceId) return showMsg('لم يتم تحديد جهاز', 'error');
 
-      assignBtn.disabled = true; assignBtn.textContent = 'جاري الربط...';
-      try {
-        // نجلب الجهاز
+      actionBtn.disabled = true; const prevTxt = actionBtn.textContent; actionBtn.textContent = 'جاري الربط...';
+      try{
+        // جلب الجهاز
         const device = await getObj(`${cfg.base}/inventory/managedObjects/${deviceId}`);
 
-        // إذا الجهاز ليس له fragment c8y_IsAsset نضيفه (حتى يظهر في DTM كـ asset)
-        if (!device.c8y_IsAsset) {
+        // إذا لم يكن له c8y_IsAsset أضفه
+        if (!device.c8y_IsAsset){
           const addAssetFlag = await fetch(`${cfg.base}/inventory/managedObjects/${deviceId}`, {
             method: 'PUT',
             headers: { ...headersObj, 'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobject+json' },
             body: JSON.stringify({ c8y_IsAsset: {} })
           });
-          if (!addAssetFlag.ok) throw new Error('فشل في إضافة c8y_IsAsset إلى الجهاز');
+          if (!addAssetFlag.ok) throw new Error('فشل إضافة c8y_IsAsset إلى الجهاز');
         }
 
         // اربطه كـ childAsset
         const link = await postRef(`${cfg.base}/inventory/managedObjects/${parentId}/childAssets`, deviceId);
-        if (!link.ok) throw new Error('فشل الربط كـ Asset');
+        if (!link.ok) throw new Error('فشل الربط (status ' + link.status + ')');
 
         showMsg('✅ تم ربط الجهاز بنجاح', 'success');
-      } catch (e) {
-        showMsg('خطأ: ' + (e.message || e));
-      } finally {
-        assignBtn.disabled = false; assignBtn.textContent = 'ربط الجهاز بالـ Asset';
+
+        // إعادة حالة الاختيار
+        childOrDeviceSelect.selectedIndex = 0;
+        updateUIForSelection();
+        updateActionState();
+      }catch(err){
+        showMsg('خطأ: ' + (err.message||err), 'error');
+      }finally{
+        actionBtn.disabled = false; actionBtn.textContent = prevTxt || 'تنفيذ';
       }
     }
 
-    // تهيئة الصفحة
+    // init
     (async () => {
       await Promise.all([loadParents(), loadTypes(), loadDevices()]);
-      updateModeUI();
+      updateUIForSelection();
+      updateActionState();
     })();
   </script>
 </body>
-
 </html>
