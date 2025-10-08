@@ -8,306 +8,362 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f7f7f7;
-      margin: 15px;
-      font-size: 12px;
+      background: #f5f6f7;
+      margin: 10px;
+      font-size: 11px;
     }
+
+    /* .card {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px 12px;
+      max-width: 700px;
+      margin: auto;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    } */
 
     h2 {
       text-align: center;
-      margin-bottom: 10px;
-      font-size: 16px;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #333;
     }
 
-    .form-group {
-      margin-bottom: 8px;
+    .form-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
     }
 
     label {
-      font-weight: bold;
-      margin-right: 5px;
-      font-size: 12px;
+      font-weight: 600;
+      font-size: 11px;
+      margin-right: 3px;
     }
 
     select,
     input {
-      padding: 4px;
       border: 1px solid #ccc;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: 11px;
+      padding: 3px 5px;
+      min-width: 90px;
+      max-width: 120px;
     }
 
     #actionBtn {
-      padding: 6px;
       background: #007bff;
       color: white;
       border: none;
       border-radius: 5px;
+      padding: 5px 10px;
+      font-size: 11px;
       cursor: pointer;
-      font-size: 13px;
+      transition: 0.2s;
     }
 
-    button:disabled {
+    #actionBtn:hover:not(:disabled) {
+      background: #005ec5;
+    }
+
+    #actionBtn:disabled {
       background: #aaa;
       cursor: not-allowed;
     }
 
+    .msg {
+      text-align: center;
+      margin: 4px 0;
+      font-size: 11px;
+    }
+
     .success {
       color: green;
-      text-align: center;
-      font-size: 12px;
-      margin-bottom: 5px;
     }
 
     .error {
       color: red;
-      text-align: center;
-      font-size: 12px;
-      margin-bottom: 5px;
-    }
-
-    .inline-selects {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      flex-wrap: wrap;
-    }
-
-    .inline-selects select {
-      flex: 1;
-      min-width: 50px;
-      max-width: 100px;
     }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <h2>Asset Manager</h2>
-    <div id="message"></div>
+  <div class="card">
+    <!-- <h2>Asset Manager</h2> -->
 
-    <div class="form-group inline-selects">
+    <div class="form-row">
       <label for="parentSelect">Parent:</label>
       <select id="parentSelect">
-        <option value="">-- Loading... --</option>
+        <option value="">Loading...</option>
       </select>
 
-      <label for="childOrDeviceSelect">Child/Device:</label>
+      <label for="childOrDeviceSelect">Child:</label>
       <select id="childOrDeviceSelect">
         <option value="">Select</option>
         <optgroup label="Asset Types" id="typesGroup"></optgroup>
         <optgroup label="Devices" id="devicesGroup"></optgroup>
       </select>
-      <div id="nameBlock" class="form-group">
-        <label for="childName">Name:</label>
-        <input id="childName" placeholder="Enter name..." />
-      </div>
+
+      <input id="childName" placeholder="Name" style="display: none" />
       <button id="actionBtn" disabled>Run</button>
+      <div id="message" class="msg"></div>
     </div>
-
-
-
-
   </div>
 
   <script>
     const cfg = {
-      base: 'https://dev-lighting.iot.etisalat-cloud.com',
-      user: 't19885/phoebe.gergis@etisalat.com',
-      pass: 'root@123'
+      base: "https://dev-lighting.iot.etisalat-cloud.com",
+      user: "t19885/phoebe.gergis@etisalat.com",
+      pass: "root@123",
     };
-    const auth = 'Basic ' + btoa(cfg.user + ':' + cfg.pass);
-    const headers = { 'Authorization': auth, 'Accept': 'application/vnd.com.nsn.cumulocity.managedobjectcollection+json' };
-    const headersObj = { 'Authorization': auth, 'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json' };
+    const auth = "Basic " + btoa(cfg.user + ":" + cfg.pass);
+    const headers = {
+      Authorization: auth,
+      Accept:
+        "application/vnd.com.nsn.cumulocity.managedobjectcollection+json",
+    };
+    const headersObj = {
+      Authorization: auth,
+      Accept: "application/vnd.com.nsn.cumulocity.managedobject+json",
+    };
 
-    const parentSelect = document.getElementById('parentSelect');
-    const childOrDeviceSelect = document.getElementById('childOrDeviceSelect');
-    const typesGroup = document.getElementById('typesGroup');
-    const devicesGroup = document.getElementById('devicesGroup');
-    const childName = document.getElementById('childName');
-    const nameBlock = document.getElementById('nameBlock');
-    const message = document.getElementById('message');
-    const actionBtn = document.getElementById('actionBtn');
+    const parentSelect = document.getElementById("parentSelect");
+    const childOrDeviceSelect = document.getElementById(
+      "childOrDeviceSelect"
+    );
+    const typesGroup = document.getElementById("typesGroup");
+    const devicesGroup = document.getElementById("devicesGroup");
+    const childName = document.getElementById("childName");
+    const message = document.getElementById("message");
+    const actionBtn = document.getElementById("actionBtn");
 
     let types = [];
     let devicesCache = [];
 
-    function showMsg(txt, cls = 'error') {
-      message.innerHTML = `<div class="${cls}">${txt}</div>`;
-      setTimeout(() => { message.innerHTML = ''; }, 4000);
-    }
+    const msg = (t, c = "error") => {
+      message.innerHTML = `<div class="msg ${c}">${t}</div>`;
+      setTimeout(() => (message.innerHTML = ""), 4000);
+    };
 
-    async function get(url) { return (await fetch(url, { headers })).json(); }
-    async function getObj(url) { return (await fetch(url, { headers: headersObj })).json(); }
-    async function post(url, body) {
-      return fetch(url, {
-        method: 'POST',
-        headers: { ...headersObj, 'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobject+json' },
-        body: JSON.stringify(body)
+    const get = async (url) => (await fetch(url, { headers })).json();
+    const getObj = async (url) =>
+      (await fetch(url, { headers: headersObj })).json();
+    const post = async (url, body) =>
+      fetch(url, {
+        method: "POST",
+        headers: {
+          ...headersObj,
+          "Content-Type":
+            "application/vnd.com.nsn.cumulocity.managedobject+json",
+        },
+        body: JSON.stringify(body),
       });
-    }
-    async function postRef(url, id) {
-      return fetch(url, {
-        method: 'POST',
-        headers: { 'Authorization': auth, 'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobjectreference+json' },
-        body: JSON.stringify({ managedObject: { id } })
+    const postRef = async (url, id) =>
+      fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: auth,
+          "Content-Type":
+            "application/vnd.com.nsn.cumulocity.managedobjectreference+json",
+        },
+        body: JSON.stringify({ managedObject: { id } }),
       });
-    }
 
     async function loadParents() {
       try {
-        const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAsset&pageSize=200`);
-        parentSelect.innerHTML = '<option value="">Select Parent</option>';
-        data.managedObjects.forEach(a => parentSelect.appendChild(new Option(`${a.name || 'No Name'} (${a.id})`, a.id)));
-      } catch (e) { showMsg('Failed to load parents', 'error'); }
+        const d = await get(
+          `${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAsset&pageSize=200`
+        );
+        parentSelect.innerHTML = '<option value="">Select</option>';
+        d.managedObjects.forEach((a) =>
+          parentSelect.add(new Option(`${a.name} (${a.id})`, a.id))
+        );
+      } catch {
+        msg("Load parents failed");
+      }
     }
 
     async function loadTypes() {
       try {
-        const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAssetType&pageSize=2000&withChildren=true`);
-        types = await Promise.all(data.managedObjects.map(t => getObj(`${cfg.base}/inventory/managedObjects/${t.id}`)));
-      } catch (e) { showMsg('Failed to load types', 'error'); }
+        const d = await get(
+          `${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAssetType&pageSize=2000`
+        );
+        types = await Promise.all(
+          d.managedObjects.map((t) =>
+            getObj(`${cfg.base}/inventory/managedObjects/${t.id}`)
+          )
+        );
+      } catch {
+        msg("Load types failed");
+      }
     }
 
     async function loadDevices() {
       try {
-        const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsDevice&pageSize=500`);
-        devicesCache = data.managedObjects || [];
-        devicesGroup.innerHTML = '';
-        devicesCache.forEach(d => {
-          const opt = document.createElement('option');
-          opt.value = `dev::${d.id}`;
-          opt.textContent = `${d.name || 'No Name'} (${d.id})`;
-          devicesGroup.appendChild(opt);
+        const d = await get(
+          `${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsDevice&pageSize=500`
+        );
+        devicesCache = d.managedObjects || [];
+        devicesGroup.innerHTML = "";
+        devicesCache.forEach((x) => {
+          const o = document.createElement("option");
+          o.value = `dev::${x.id}`;
+          o.textContent = `${x.name || "No Name"} (${x.id})`;
+          devicesGroup.appendChild(o);
         });
-      } catch (e) { showMsg('Failed to load devices', 'error'); }
+      } catch {
+        msg("Load devices failed");
+      }
     }
 
-    parentSelect.addEventListener('change', async (ev) => {
-      typesGroup.innerHTML = '<option>-- Loading --</option>';
-      if (!ev.target.value) return;
+    parentSelect.addEventListener("change", async (e) => {
+      typesGroup.innerHTML = "<option>...</option>";
+      if (!e.target.value) return;
       try {
-        const parent = await getObj(`${cfg.base}/inventory/managedObjects/${ev.target.value}`);
-        const pType = types.find(t => t.name === parent.type);
-        typesGroup.innerHTML = '';
-        if (pType?.c8y_IsAssetType?.allowedAssetTypes?.length) {
-          pType.c8y_IsAssetType.allowedAssetTypes.forEach(a => {
-            const target = types.find(t => t.id === a.id);
-            if (target) {
-              const opt = document.createElement('option');
-              opt.value = `type::${target.name}`;
-              opt.textContent = target.label || target.name;
-              typesGroup.appendChild(opt);
+        const p = await getObj(
+          `${cfg.base}/inventory/managedObjects/${e.target.value}`
+        );
+        const pt = types.find((t) => t.name === p.type);
+        typesGroup.innerHTML = "";
+        if (pt?.c8y_IsAssetType?.allowedAssetTypes?.length) {
+          pt.c8y_IsAssetType.allowedAssetTypes.forEach((a) => {
+            const t = types.find((tt) => tt.id === a.id);
+            if (t) {
+              const o = document.createElement("option");
+              o.value = `type::${t.name}`;
+              o.textContent = t.label || t.name;
+              typesGroup.appendChild(o);
             }
           });
-        } else {
-          typesGroup.innerHTML = '<option>-- None --</option>';
-        }
+        } else typesGroup.innerHTML = "<option>None</option>";
       } catch {
-        typesGroup.innerHTML = '<option>-- Error --</option>';
+        typesGroup.innerHTML = "<option>Error</option>";
       }
-      updateActionState();
+      check();
     });
 
-    childOrDeviceSelect.addEventListener('change', () => {
-      updateUIForSelection();
-      updateActionState();
-    });
-
-    function updateUIForSelection() {
-      const v = childOrDeviceSelect.value || '';
-      if (v.startsWith('type::')) {
-        nameBlock.style.display = 'block';
-        childName.disabled = false;
-        actionBtn.textContent = 'Create & Link';
-      } else if (v.startsWith('dev::')) {
-        nameBlock.style.display = 'none';
-        childName.disabled = true;
-        actionBtn.textContent = 'Link Device';
+    childOrDeviceSelect.addEventListener("change", () => {
+      const v = childOrDeviceSelect.value || "";
+      if (v.startsWith("type::")) {
+        childName.style.display = "inline-block";
+        actionBtn.textContent = "Create & Link";
+      } else if (v.startsWith("dev::")) {
+        childName.style.display = "none";
+        actionBtn.textContent = "Link";
       } else {
-        nameBlock.style.display = 'block';
-        childName.disabled = false;
-        actionBtn.textContent = 'Run';
+        childName.style.display = "none";
+        actionBtn.textContent = "Run";
       }
-    }
-
-    function updateActionState() {
-      const v = childOrDeviceSelect.value || '';
-      if (!parentSelect.value || !v) return actionBtn.disabled = true;
-      if (v.startsWith('type::')) actionBtn.disabled = !childName.value.trim();
-      else actionBtn.disabled = false;
-    }
-
-    childName.addEventListener('input', updateActionState);
-
-    actionBtn.addEventListener('click', async () => {
-      const sel = childOrDeviceSelect.value || '';
-      if (!sel) return showMsg('Select a type or device', 'error');
-      if (!parentSelect.value) return showMsg('Select parent first', 'error');
-      if (sel.startsWith('type::')) await handleCreateAssetFromType();
-      else if (sel.startsWith('dev::')) await handleAssignDevice();
-      else showMsg('Unknown selection', 'error');
+      check();
     });
 
-    async function handleCreateAssetFromType() {
-      const parentId = parentSelect.value;
-      const typeName = childOrDeviceSelect.value.split('::')[1];
-      const name = childName.value.trim();
-      if (!typeName || !name) return;
+    const check = () => {
+      const v = childOrDeviceSelect.value || "";
+      if (!parentSelect.value || !v) return (actionBtn.disabled = true);
+      if (v.startsWith("type::"))
+        actionBtn.disabled = !childName.value.trim();
+      else actionBtn.disabled = false;
+    };
+    childName.addEventListener("input", check);
 
-      actionBtn.disabled = true; const prevTxt = actionBtn.textContent; actionBtn.textContent = 'Creating...';
+    actionBtn.addEventListener("click", async () => {
+      const sel = childOrDeviceSelect.value || "";
+      if (!sel) return msg("Select type/device");
+      if (!parentSelect.value) return msg("Select parent");
+      if (sel.startsWith("type::")) createAsset();
+      else if (sel.startsWith("dev::")) linkDevice();
+    });
+
+    async function createAsset() {
+      const pid = parentSelect.value,
+        type = childOrDeviceSelect.value.split("::")[1],
+        name = childName.value.trim();
+      if (!type || !name) return;
+      actionBtn.disabled = true;
+      const prev = actionBtn.textContent;
+      actionBtn.textContent = "Creating...";
       try {
-        const typeDef = types.find(t => t.name === typeName);
-        const asset = { name, type: typeName, c8y_IsAsset: {}, c8y_IsDeviceGroup: {} };
-        if (typeDef?.c8y_IsAssetType?.icon) asset.icon = typeDef.c8y_IsAssetType.icon;
-
+        const t = types.find((x) => x.name === type);
+        const asset = {
+          name,
+          type,
+          c8y_IsAsset: {},
+          c8y_IsDeviceGroup: {},
+          icon: t?.c8y_IsAssetType?.icon,
+        };
         const res = await post(`${cfg.base}/inventory/managedObjects`, asset);
-        if (!res.ok) throw new Error('Failed to create');
-        let id; try { const json = await res.json(); id = json.id; } catch { const loc = res.headers.get('Location'); if (loc) id = loc.split('/').pop(); }
-
-        await postRef(`${cfg.base}/inventory/managedObjects/${parentId}/childAssets`, id);
-        showMsg(`✅ Created & linked "${name}" (${id})`, 'success');
+        if (!res.ok) throw new Error("Create failed");
+        let id;
+        try {
+          const j = await res.json();
+          id = j.id;
+        } catch {
+          const loc = res.headers.get("Location");
+          if (loc) id = loc.split("/").pop();
+        }
+        await postRef(
+          `${cfg.base}/inventory/managedObjects/${pid}/childAssets`,
+          id
+        );
+        msg(`Done`, "success");
         await loadParents();
-        childName.value = ''; childOrDeviceSelect.selectedIndex = 0;
-        updateUIForSelection(); updateActionState();
-      } catch (err) {
-        showMsg('Error: ' + err.message, 'error');
+        childName.value = "";
+        childOrDeviceSelect.selectedIndex = 0;
+        check();
+      } catch (e) {
+        msg(e.message);
       } finally {
-        actionBtn.disabled = false; actionBtn.textContent = prevTxt;
+        actionBtn.disabled = false;
+        actionBtn.textContent = prev;
       }
     }
 
-    async function handleAssignDevice() {
-      const parentId = parentSelect.value;
-      const deviceId = childOrDeviceSelect.value.split('::')[1];
-      if (!deviceId) return showMsg('No device selected', 'error');
-      actionBtn.disabled = true; const prevTxt = actionBtn.textContent; actionBtn.textContent = 'Linking...';
+    async function linkDevice() {
+      const pid = parentSelect.value,
+        did = childOrDeviceSelect.value.split("::")[1];
+      if (!did) return msg("No device");
+      actionBtn.disabled = true;
+      const prev = actionBtn.textContent;
+      actionBtn.textContent = "Linking...";
       try {
-        const device = await getObj(`${cfg.base}/inventory/managedObjects/${deviceId}`);
-        if (!device.c8y_IsAsset) {
-          const addFlag = await fetch(`${cfg.base}/inventory/managedObjects/${deviceId}`, {
-            method: 'PUT',
-            headers: { ...headersObj, 'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobject+json' },
-            body: JSON.stringify({ c8y_IsAsset: {} })
-          });
-          if (!addFlag.ok) throw new Error('Failed to mark device as asset');
+        const d = await getObj(`${cfg.base}/inventory/managedObjects/${did}`);
+        if (!d.c8y_IsAsset) {
+          const add = await fetch(
+            `${cfg.base}/inventory/managedObjects/${did}`,
+            {
+              method: "PUT",
+              headers: {
+                ...headersObj,
+                "Content-Type":
+                  "application/vnd.com.nsn.cumulocity.managedobject+json",
+              },
+              body: JSON.stringify({ c8y_IsAsset: {} }),
+            }
+          );
+          if (!add.ok) throw new Error("Mark fail");
         }
-        await postRef(`${cfg.base}/inventory/managedObjects/${parentId}/childAssets`, deviceId);
-        showMsg('✅ Device linked', 'success');
+        await postRef(
+          `${cfg.base}/inventory/managedObjects/${pid}/childAssets`,
+          did
+        );
+        msg("Done", "success");
         childOrDeviceSelect.selectedIndex = 0;
-        updateUIForSelection();
-        updateActionState();
-      } catch (err) {
-        showMsg('Error: ' + err.message, 'error');
+        check();
+      } catch (e) {
+        msg(e.message);
       } finally {
-        actionBtn.disabled = false; actionBtn.textContent = prevTxt;
+        actionBtn.disabled = false;
+        actionBtn.textContent = prev;
       }
     }
 
     (async () => {
       await Promise.all([loadParents(), loadTypes(), loadDevices()]);
-      updateUIForSelection();
-      updateActionState();
+      check();
     })();
   </script>
 </body>
