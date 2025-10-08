@@ -97,6 +97,18 @@
       <input type="text" id="childName" placeholder="أدخل الاسم">
     </div>
     <button onclick="createAsset()" id="createBtn">إنشاء وربط</button>
+
+    <hr style="margin: 30px 0; border: 1px solid #e0e0e0;">
+
+    <div class="form-group">
+      <label for="assetSelect">اختر الـ Asset:</label>
+      <select id="assetSelect"><option value="">-- جاري التحميل --</option></select>
+    </div>
+    <div class="form-group">
+      <label for="deviceSelect">اختر الجهاز:</label>
+      <select id="deviceSelect"><option value="">-- جاري التحميل --</option></select>
+    </div>
+    <button onclick="assignDevice()" id="assignBtn">ربط الجهاز بالـ Asset</button>
   </div>
 
   <script>
@@ -149,6 +161,27 @@
         const opt = document.createElement('option');
         opt.value = a.id;
         opt.textContent = `${a.name || 'بدون اسم'} (${a.id})`;
+        sel.appendChild(opt);
+      });
+
+      const sel2 = document.getElementById('assetSelect');
+      sel2.innerHTML = '<option value="">-- اختر Asset --</option>';
+      data.managedObjects.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = `${a.name || 'بدون اسم'} (${a.id})`;
+        sel2.appendChild(opt);
+      });
+    }
+
+    async function loadDevices() {
+      const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsDevice&pageSize=200`);
+      const sel = document.getElementById('deviceSelect');
+      sel.innerHTML = '<option value="">-- اختر جهاز --</option>';
+      data.managedObjects.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = `${d.name || 'بدون اسم'} (${d.id})`;
         sel.appendChild(opt);
       });
     }
@@ -247,8 +280,61 @@
       }
     }
 
+    async function assignDevice() {
+      const assetId = document.getElementById('assetSelect').value;
+      const deviceId = document.getElementById('deviceSelect').value;
+      const btn = document.getElementById('assignBtn');
+
+      if (!assetId) return msg('يجب اختيار Asset');
+      if (!deviceId) return msg('يجب اختيار جهاز');
+
+      try {
+        btn.disabled = true;
+        btn.textContent = 'جاري الربط...';
+
+        console.log('Assigning device:', deviceId, 'to asset:', assetId);
+
+        // Method 1 (Recommended): Update device with parent reference
+        const device = await getObj(`${cfg.base}/inventory/managedObjects/${deviceId}`);
+        console.log('Device before update:', device);
+
+        const updateRes = await fetch(`${cfg.base}/inventory/managedObjects/${deviceId}`, {
+          method: 'PUT',
+          headers: { ...headersObj, 'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobject+json' },
+          body: JSON.stringify({ parent: { id: assetId } })
+        });
+
+        console.log('Update response status:', updateRes.status);
+        const updateData = await updateRes.text();
+        console.log('Update response:', updateData);
+
+        if (!updateRes.ok) throw new Error(`فشل الربط: ${updateRes.status}`);
+
+        btn.textContent = 'جاري التحقق...';
+        await new Promise(r => setTimeout(r, 2000));
+
+        const verify = await getObj(`${cfg.base}/inventory/managedObjects/${deviceId}?withParents=true`);
+        console.log('Verified device:', verify);
+
+        const hasParent = verify.assetParents?.references?.some(r => r.managedObject?.id === assetId) ||
+                          verify.deviceParents?.references?.some(r => r.managedObject?.id === assetId);
+
+        console.log('Has parent:', hasParent);
+
+        if (!hasParent) throw new Error('فشل الربط - الـ parent مش موجود في Device');
+
+        msg(`✅ تم ربط الجهاز "${device.name}" بـ Asset بنجاح<br><a href="${cfg.base}/apps/digital-twin-manager/index.html#/device/${deviceId}" target="_blank">شاهد الجهاز</a> | <a href="${cfg.base}/apps/digital-twin-manager/index.html#/group/${assetId}/subassets" target="_blank">شاهد Asset</a>`, 'success');
+      } catch (e) {
+        console.error('Error:', e);
+        msg(`خطأ: ${e.message}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'ربط الجهاز بالـ Asset';
+      }
+    }
+
     (async () => {
-      await Promise.all([loadParents(), loadTypes()]);
+      await Promise.all([loadParents(), loadTypes(), loadDevices()]);
     })();
   </script>
 </body>
