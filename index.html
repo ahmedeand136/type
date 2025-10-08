@@ -13,15 +13,6 @@
       font-size: 12px;
     }
 
-    .container {
-      background: #fff;
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
-      max-width: 520px;
-      margin: auto;
-    }
-
     h2 {
       text-align: center;
       margin-bottom: 10px;
@@ -46,8 +37,7 @@
       font-size: 12px;
     }
 
-    button {
-      width: 100%;
+    #actionBtn {
       padding: 6px;
       background: #007bff;
       color: white;
@@ -85,13 +75,8 @@
 
     .inline-selects select {
       flex: 1;
-      min-width: 110px;
-      max-width: 160px;
-    }
-
-    #childName {
-      width: 100%;
-      margin-top: 3px;
+      min-width: 50px;
+      max-width: 100px;
     }
   </style>
 </head>
@@ -109,18 +94,20 @@
 
       <label for="childOrDeviceSelect">Child/Device:</label>
       <select id="childOrDeviceSelect">
-        <option value="">-- Select --</option>
+        <option value="">Select</option>
         <optgroup label="Asset Types" id="typesGroup"></optgroup>
         <optgroup label="Devices" id="devicesGroup"></optgroup>
       </select>
+      <div id="nameBlock" class="form-group">
+        <label for="childName">Name:</label>
+        <input id="childName" placeholder="Enter name..." />
+      </div>
+      <button id="actionBtn" disabled>Run</button>
     </div>
 
-    <div id="nameBlock" class="form-group">
-      <label for="childName">Name:</label>
-      <input id="childName" placeholder="Enter name..." />
-    </div>
 
-    <button id="actionBtn" disabled>Run</button>
+
+
   </div>
 
   <script>
@@ -170,7 +157,7 @@
     async function loadParents() {
       try {
         const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAsset&pageSize=200`);
-        parentSelect.innerHTML = '<option value="">-- Select Parent --</option>';
+        parentSelect.innerHTML = '<option value="">Select Parent</option>';
         data.managedObjects.forEach(a => parentSelect.appendChild(new Option(`${a.name || 'No Name'} (${a.id})`, a.id)));
       } catch (e) { showMsg('Failed to load parents', 'error'); }
     }
