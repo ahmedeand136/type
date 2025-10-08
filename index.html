@@ -4,406 +4,253 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نظام إدارة الأصول - Cumulocity</title>
+  <title>نظام إدارة الأصول</title>
   <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #f7f7f7;
-    margin: 0;
-  }
-  .container {
-    max-width: 400px;
-    margin: 40px auto;
-    background: #fff;
-    padding: 24px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px #0001;
-  }
-  .header h2 {
-    margin: 0 0 16px 0;
-    text-align: center;
-  }
-  .form-group {
-    margin-bottom: 16px;
-  }
-  label {
-    display: block;
-    margin-bottom: 6px;
-  }
-  input, select {
-    width: 100%;
-    padding: 8px;
-    box-sizing: border-box;
-  }
-  button {
-    width: 100%;
-    padding: 10px;
-    background: #1976d2;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  button:disabled {
-    background: #aaa;
-  }
-  .success {
-    color: green;
-    margin-bottom: 10px;
-    line-height: 1.6;
-  }
-  .success a {
-    color: #1976d2;
-    text-decoration: underline;
-    margin: 0 5px;
-  }
-  .error {
-    color: red;
-    margin-bottom: 10px;
-  }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 400px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #0001;
+    }
+
+    .header h2 {
+      margin: 0 0 16px 0;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #aaa;
+    }
+
+    .success {
+      color: green;
+      margin-bottom: 10px;
+    }
+
+    .success a {
+      color: #1976d2;
+      text-decoration: underline;
+      margin: 0 5px;
+    }
+
+    .error {
+      color: red;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 
 <body>
   <div class="container">
     <div class="header">
-      <h2>إدارة العلاقات بين الأصول</h2>
+      <h2>إدارة الأصول</h2>
     </div>
-
-    <div class="content">
-      <div class="section">
-        <div id="message"></div>
-
-        <div class="form-group">
-          <label for="parentSelect">اختر الأصل الأب:</label>
-          <select id="parentSelect">
-            <option value="">-- جاري تحميل البيانات --</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="childType">نوع الأصل الفرعي:</label>
-          <select id="childType">
-            <option value="">-- اختر الأصل الأب أولاً --</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="childName">اسم الأصل الفرعي:</label>
-          <input type="text" id="childName" placeholder="أدخل الاسم">
-        </div>
-
-        <button onclick="createChildAsset()" id="createBtn">إنشاء أصل فرعي وربطه</button>
-      </div>
+    <div id="message"></div>
+    <div class="form-group">
+      <label for="parentSelect">اختر الأصل الأب:</label>
+      <select id="parentSelect">
+        <option value="">-- جاري التحميل --</option>
+      </select>
     </div>
+    <div class="form-group">
+      <label for="childType">نوع الأصل الفرعي:</label>
+      <select id="childType">
+        <option value="">-- اختر الأب أولاً --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="childName">اسم الأصل الفرعي:</label>
+      <input type="text" id="childName" placeholder="أدخل الاسم">
+    </div>
+    <button onclick="createAsset()" id="createBtn">إنشاء وربط</button>
   </div>
 
   <script>
-    const config = {
-      baseUrl: 'https://dev-lighting.iot.etisalat-cloud.com',
-      username: 't19885/phoebe.gergis@etisalat.com',
-      password: 'root@123'
+    const cfg = {
+      base: 'https://dev-lighting.iot.etisalat-cloud.com',
+      user: 't19885/phoebe.gergis@etisalat.com',
+      pass: 'root@123'
     };
 
-    document.addEventListener('DOMContentLoaded', function () {
-      loadAllData();
-    });
+    const auth = 'Basic ' + btoa(cfg.user + ':' + cfg.pass);
+    const headers = { 'Authorization': auth, 'Accept': 'application/vnd.com.nsn.cumulocity.managedobjectcollection+json' };
+    const headersObj = { 'Authorization': auth, 'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json' };
 
-    async function loadAllData() {
-      await Promise.all([
-        loadParents(),
-        loadAssetTypes()
-      ]);
+    let types = [];
+
+    async function get(url) {
+      return (await fetch(url, { headers })).json();
     }
 
-    function showMessage(message, type = 'error') {
-      const messageDiv = document.getElementById('message');
-      messageDiv.innerHTML = `<div class="${type}">${message}</div>`;
-      setTimeout(() => { messageDiv.innerHTML = ''; }, 50000);
+    async function getObj(url) {
+      return (await fetch(url, { headers: headersObj })).json();
+    }
+
+    async function post(url, body) {
+      return await fetch(url, {
+        method: 'POST',
+        headers: { ...headersObj, 'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobject+json' },
+        body: JSON.stringify(body)
+      });
+    }
+
+    async function postRef(url, id) {
+      return await fetch(url, {
+        method: 'POST',
+        headers: { 'Authorization': auth, 'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobjectreference+json' },
+        body: JSON.stringify({ managedObject: { id } })
+      });
+    }
+
+    function msg(text, type = 'error') {
+      document.getElementById('message').innerHTML = `<div class="${type}">${text}</div>`;
+      setTimeout(() => document.getElementById('message').innerHTML = '', 50000);
     }
 
     async function loadParents() {
-      try {
-        const response = await fetch(`${config.baseUrl}/inventory/managedObjects?pageSize=200&fragmentType=c8y_IsAsset`, {
-          method: 'GET',
-          headers: {
-            'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
-            'Accept': 'application/vnd.com.nsn.cumulocity.managedobjectcollection+json'
-          }
-        });
-        const data = await response.json();
-        const parentSelect = document.getElementById('parentSelect');
-        parentSelect.innerHTML = '<option value="">-- اختر الأصل الأب --</option>';
-        data.managedObjects.forEach(asset => {
-          const option = document.createElement('option');
-          option.value = asset.id;
-          option.textContent = `${asset.name || 'بدون اسم'} (${asset.id})`;
-          parentSelect.appendChild(option);
-        });
-      } catch (error) {
-        showMessage(`خطأ في تحميل الأصول الأب: ${error.message}`);
-      }
+      const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAsset&pageSize=200`);
+      const sel = document.getElementById('parentSelect');
+      sel.innerHTML = '<option value="">-- اختر الأب --</option>';
+      data.managedObjects.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = `${a.name || 'بدون اسم'} (${a.id})`;
+        sel.appendChild(opt);
+      });
     }
 
-    async function loadAssetTypes() {
-      try {
-        const response = await fetch(`${config.baseUrl}/inventory/managedObjects?fragmentType=c8y_IsAssetType&pageSize=2000&withChildren=true`, {
-          method: 'GET',
-          headers: {
-            'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
-            'Accept': 'application/vnd.com.nsn.cumulocity.managedobjectcollection+json'
-          }
-        });
-        const data = await response.json();
-
-        // نحمّل تفاصيل كل Asset Type مع الـ properties الكاملة
-        const detailedTypes = await Promise.all(
-          data.managedObjects.map(async (type) => {
-            const detailResponse = await fetch(`${config.baseUrl}/inventory/managedObjects/${type.id}`, {
-              method: 'GET',
-              headers: {
-                'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
-                'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json'
-              }
-            });
-            return await detailResponse.json();
-          })
-        );
-
-        window.assetTypes = detailedTypes;
-      } catch (error) {
-        showMessage(`خطأ في تحميل الأنواع: ${error.message}`);
-      }
+    async function loadTypes() {
+      const data = await get(`${cfg.base}/inventory/managedObjects?fragmentType=c8y_IsAssetType&pageSize=2000&withChildren=true`);
+      types = await Promise.all(data.managedObjects.map(t => getObj(`${cfg.base}/inventory/managedObjects/${t.id}`)));
     }
 
-    // ✅ عند اختيار الأب
-    document.addEventListener('change', async (e) => {
-      if (e.target.id === 'parentSelect') {
-        await updateChildTypeOptions(e.target.value);
+    document.getElementById('parentSelect').addEventListener('change', async (e) => {
+      const sel = document.getElementById('childType');
+      sel.innerHTML = '<option value="">-- اختر النوع --</option>';
+      if (!e.target.value) return;
+
+      const parent = await getObj(`${cfg.base}/inventory/managedObjects/${e.target.value}`);
+      const pType = types.find(t => t.name === parent.type);
+
+      if (pType?.c8y_IsAssetType?.allowedAssetTypes?.length) {
+        pType.c8y_IsAssetType.allowedAssetTypes.forEach(a => {
+          const target = types.find(t => t.id === a.id);
+          if (target) {
+            const opt = document.createElement('option');
+            opt.value = target.name;
+            opt.textContent = target.label || target.name;
+            sel.appendChild(opt);
+          }
+        });
+      } else {
+        sel.innerHTML = '<option disabled>لا يوجد أنواع متاحة</option>';
       }
     });
 
-    async function updateChildTypeOptions(parentId) {
-      const typeSelect = document.getElementById('childType');
-      typeSelect.innerHTML = '<option value="">-- اختر النوع --</option>';
+    async function createAsset() {
+      const parentId = document.getElementById('parentSelect').value;
+      const name = document.getElementById('childName').value.trim();
+      const type = document.getElementById('childType').value;
+      const btn = document.getElementById('createBtn');
 
-      if (!parentId) return;
-
-      try {
-        const response = await fetch(`${config.baseUrl}/inventory/managedObjects/${parentId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
-            'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json'
-          }
-        });
-        const parent = await response.json();
-        console.log('Parent asset details:', parent);
-        console.log('Parent has c8y_IsDevice?', !!parent.c8y_IsDevice);
-        console.log('Parent has c8y_IsAsset?', !!parent.c8y_IsAsset);
-
-        // نجيب نوع الأصل الأب
-        const parentType = parent.type;
-
-        // نلاقي تعريف النوع من الـ AssetTypes
-        const parentAssetType = window.assetTypes.find(t => t.name === parentType);
-
-        if (parentAssetType && parentAssetType.c8y_IsAssetType?.allowedAssetTypes?.length) {
-          const allowed = parentAssetType.c8y_IsAssetType.allowedAssetTypes;
-          allowed.forEach(a => {
-            const target = window.assetTypes.find(t => t.id === a.id);
-            if (target) {
-              const option = document.createElement('option');
-              option.value = target.name;
-              option.textContent = target.label || target.name;
-              typeSelect.appendChild(option);
-            }
-          });
-        } else {
-          const option = document.createElement('option');
-          option.textContent = 'لا يوجد أنواع فرعية متاحة لهذا الأصل';
-          option.disabled = true;
-          typeSelect.appendChild(option);
-        }
-
-      } catch (error) {
-        showMessage(`خطأ في جلب أنواع الأبناء: ${error.message}`);
-      }
-    }
-
-    async function createChildAsset() {
-      const parentSelect = document.getElementById('parentSelect');
-      const childName = document.getElementById('childName').value.trim();
-      const childType = document.getElementById('childType').value;
-      const createBtn = document.getElementById('createBtn');
-
-      if (!parentSelect.value) return showMessage('يجب اختيار أصل أب');
-      if (!childName) return showMessage('يجب إدخال اسم للأصل الفرعي');
-      if (!childType) return showMessage('يجب اختيار نوع للأصل الفرعي');
+      if (!parentId) return msg('يجب اختيار أصل أب');
+      if (!name) return msg('يجب إدخال اسم');
+      if (!type) return msg('يجب اختيار نوع');
 
       try {
-        createBtn.disabled = true;
-        createBtn.textContent = 'جاري الإنشاء...';
+        btn.disabled = true;
+        btn.textContent = 'جاري الإنشاء...';
 
-        // ✅ نجيب تعريف الـ Asset Type
-        const assetTypeDef = window.assetTypes.find(t => t.name === childType);
-        console.log('Asset Type Definition:', assetTypeDef);
-        console.log('Asset Type has c8y_IsDevice?', !!assetTypeDef?.c8y_IsDevice);
-        console.log('Asset Type c8y_IsAssetType:', assetTypeDef?.c8y_IsAssetType);
+        const typeDef = types.find(t => t.name === type);
+        const asset = { name, type, c8y_IsAsset: {}, c8y_IsDeviceGroup: {} };
 
-        const newAsset = {
-          name: childName,
-          type: childType,
-          c8y_IsAsset: {},
-          c8y_IsDeviceGroup: {}
-        };
+        if (typeDef?.c8y_IsAssetType?.icon) asset.icon = typeDef.c8y_IsAssetType.icon;
 
-        // ✅ نضيف الـ icon من الـ Asset Type
-        if (assetTypeDef?.c8y_IsAssetType?.icon) {
-          newAsset.icon = assetTypeDef.c8y_IsAssetType.icon;
-        }
-
-        // ✅ لو الـ Asset Type عنده properties إضافية، نضيفها
-        if (assetTypeDef?.c8y_IsAssetType?.properties && Array.isArray(assetTypeDef.c8y_IsAssetType.properties)) {
-          // نجيب تفاصيل الـ properties من الـ childAdditions
-          for (const propRef of assetTypeDef.c8y_IsAssetType.properties) {
-            console.log('Processing property reference:', propRef);
-
-            if (propRef.id) {
+        if (typeDef?.c8y_IsAssetType?.properties) {
+          for (const p of typeDef.c8y_IsAssetType.properties) {
+            if (p.id) {
               try {
-                // نجيب تفاصيل الـ property من الـ API
-                const propResponse = await fetch(`${config.baseUrl}/inventory/managedObjects/${propRef.id}`, {
-                  method: 'GET',
-                  headers: {
-                    'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
-                    'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json'
-                  }
-                });
-                const propDetail = await propResponse.json();
-                console.log('Property details:', propDetail);
-
-                // نتحقق لو دي complex property (عندها properties جواها)
-                if (propDetail.properties && Array.isArray(propDetail.properties)) {
-                  const propValue = { name: childName }; // نضيف الاسم زي ما شفنا في Cairo
-
-                  propDetail.properties.forEach(nestedProp => {
-                    console.log('  - Nested property:', nestedProp.key, nestedProp.type, nestedProp.defaultValue);
-
-                    // نضيف كل nested property سواء عندها default value أو لأ
-                    if (nestedProp.defaultValue !== undefined && nestedProp.defaultValue !== null) {
-                      propValue[nestedProp.key] = nestedProp.defaultValue;
-                    } else {
-                      // نضيف قيمة افتراضية حسب النوع
-                      if (nestedProp.type === 'Number' || nestedProp.type === 'number') {
-                        propValue[nestedProp.key] = 0;
-                      } else if (nestedProp.type === 'String' || nestedProp.type === 'string') {
-                        propValue[nestedProp.key] = '';
-                      } else if (nestedProp.type === 'Boolean' || nestedProp.type === 'boolean') {
-                        propValue[nestedProp.key] = false;
-                      } else {
-                        propValue[nestedProp.key] = 0; // default للـ Number
-                      }
-                    }
+                const prop = await getObj(`${cfg.base}/inventory/managedObjects/${p.id}`);
+                if (prop.properties) {
+                  const val = { name };
+                  prop.properties.forEach(np => {
+                    val[np.key] = np.defaultValue ?? (np.type === 'Number' || np.type === 'number' ? 0 : np.type === 'Boolean' || np.type === 'boolean' ? false : '');
                   });
-
-                  console.log('  - Final propValue:', propValue);
-
-                  // نضيف الـ property مباشرة في الـ root (مش جوا assetProperties)
-                  newAsset[propDetail.key] = propValue;
-                } else if (propDetail.defaultValue !== undefined) {
-                  // simple property
-                  newAsset[propDetail.key] = propDetail.defaultValue;
+                  asset[prop.key] = val;
+                } else if (prop.defaultValue !== undefined) {
+                  asset[prop.key] = prop.defaultValue;
                 }
-              } catch (error) {
-                console.error('Error loading property details:', error);
-              }
+              } catch (e) { }
             }
           }
         }
 
-        console.log('Creating asset with payload:', JSON.stringify(newAsset, null, 2));
-
-        const createResponse = await fetch(`${config.baseUrl}/inventory/managedObjects`, {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
-            'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobject+json',
-            'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json'
-          },
-          body: JSON.stringify(newAsset)
-        });
-
-        // ✅ معالجة الرد الفاضي
-        let createdAsset = {};
-        if (createResponse.status === 201 || createResponse.status === 200) {
+        const res = await post(`${cfg.base}/inventory/managedObjects`, asset);
+        let id;
+        if (res.status === 201 || res.status === 200) {
           try {
-            createdAsset = await createResponse.json();
-            console.log('Created asset response:', createdAsset);
+            id = (await res.json()).id;
           } catch {
-            const location = createResponse.headers.get('Location');
-            if (location) {
-              const id = location.split('/').pop();
-              createdAsset.id = id;
-            }
+            const loc = res.headers.get('Location');
+            if (loc) id = loc.split('/').pop();
           }
         }
 
-        if (!createdAsset.id) throw new Error('لم يتم الحصول على معرف الأصل الجديد.');
+        if (!id) throw new Error('لم يتم الحصول على المعرف');
 
-        // ✅ نتحقق من الأصل المنشأ
-        const verifyResponse = await fetch(`${config.baseUrl}/inventory/managedObjects/${createdAsset.id}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
-            'Accept': 'application/vnd.com.nsn.cumulocity.managedobject+json'
-          }
-        });
-        const verifiedAsset = await verifyResponse.json();
-        console.log('Verified asset after creation:', verifiedAsset);
-        console.log('Has c8y_IsDevice?', !!verifiedAsset.c8y_IsDevice);
-        console.log('Has c8y_IsAsset?', !!verifiedAsset.c8y_IsAsset);
-
-        // ✅ ننتظر لحظة ثم نربطه بالأب
         await new Promise(r => setTimeout(r, 1000));
+        const link = await postRef(`${cfg.base}/inventory/managedObjects/${parentId}/childAssets`, id);
+        if (!link.ok) throw new Error('فشل الربط');
 
-        const childReference = { managedObject: { id: createdAsset.id } };
-
-        const linkResponse = await fetch(`${config.baseUrl}/inventory/managedObjects/${parentSelect.value}/childAssets`, {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
-            'Content-Type': 'application/vnd.com.nsn.cumulocity.managedobjectreference+json'
-          },
-          body: JSON.stringify(childReference)
-        });
-
-        if (!linkResponse.ok) throw new Error('فشل الربط بالأصل الأب.');
-
-        const assetUrl = `${config.baseUrl}/inventory/managedObjects/${createdAsset.id}`;
-        const dtmDeviceUrl = `${config.baseUrl}/apps/digital-twin-manager/index.html#/device/${createdAsset.id}`;
-        const dtmAssetUrl = `${config.baseUrl}/apps/digital-twin-manager/index.html#/asset/${createdAsset.id}`;
-        const dtmGroupUrl = `${config.baseUrl}/apps/digital-twin-manager/index.html#/group/${createdAsset.id}`;
-        const parentSubassetsUrl = `${config.baseUrl}/apps/digital-twin-manager/index.html#/group/${parentSelect.value}/subassets`;
-
-        showMessage(`✅ تم إنشاء وربط الأصل "${childName}" (${childType}) بنجاح (ID: ${createdAsset.id})<br><br>` +
-          `<strong>جرب الروابط دي:</strong><br>` +
-          `<a href="${dtmDeviceUrl}" target="_blank">DTM Device View</a> | ` +
-          `<a href="${dtmAssetUrl}" target="_blank">DTM Asset View</a> | ` +
-          `<a href="${dtmGroupUrl}" target="_blank">DTM Group View</a><br>` +
-          `<a href="${parentSubassetsUrl}" target="_blank">Parent Subassets</a> | ` +
-          `<a href="${assetUrl}" target="_blank">API JSON</a>`, 'success');
+        msg(`✅ تم إنشاء وربط "${name}" (ID: ${id})<br><a href="${cfg.base}/apps/digital-twin-manager/index.html#/group/${parentId}/subassets" target="_blank">شاهد في DTM</a>`, 'success');
         document.getElementById('childName').value = '';
         await loadParents();
-
-      } catch (error) {
-        showMessage(`خطأ أثناء الإنشاء: ${error.message}`);
+      } catch (e) {
+        msg(`خطأ: ${e.message}`);
       } finally {
-        createBtn.disabled = false;
-        createBtn.textContent = 'إنشاء أصل فرعي وربطه';
+        btn.disabled = false;
+        btn.textContent = 'إنشاء وربط';
       }
     }
-  </script>
 
+    (async () => {
+      await Promise.all([loadParents(), loadTypes()]);
+    })();
+  </script>
 </body>
 
 </html>
